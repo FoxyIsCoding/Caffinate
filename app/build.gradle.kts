@@ -105,6 +105,20 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.2")
 
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // CameraX
+    val cameraxVersion = "1.3.1"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+
+    // Accompanist for permissions
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+
+    // ExifInterface for image orientation
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

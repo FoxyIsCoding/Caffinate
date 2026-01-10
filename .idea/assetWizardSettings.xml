@@ -80,7 +80,7 @@
                                             <option name="values">
                                               <map>
                                                 <entry key="color" value="000000" />
-                                                <entry key="imagePath" value="E:\TMP\bolt_139dp_1F1F1F_FILL0_wght400_GRAD0_opsz48.png" />
+                                                <entry key="imagePath" value="E:\TMP\bolt_139dp_1F1F1F_FILL0_wght0_GRAD0_opszNaN.png" />
                                                 <entry key="scalingPercent" value="46" />
                                               </map>
                                             </option>
@@ -114,7 +114,7 @@
                                   <option name="values">
                                     <map>
                                       <entry key="backgroundAssetType" value="COLOR" />
-                                      <entry key="backgroundColor" value="55d088" />
+                                      <entry key="backgroundColor" value="51be84" />
                                     </map>
                                   </option>
                                 </PersistentState>

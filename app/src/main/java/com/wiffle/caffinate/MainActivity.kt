@@ -9,11 +9,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,15 +31,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +59,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import com.wiffle.caffinate.data.Drink
 import com.wiffle.caffinate.data.DrinkViewModel
 import java.text.SimpleDateFormat
@@ -71,25 +83,47 @@ class MainActivity : ComponentActivity() {
                         enterTransition = {
                             slideIntoContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(300)
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                            ) + fadeIn(
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                            ) + scaleIn(
+                                initialScale = 0.85f,
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
                             )
                         },
                         exitTransition = {
                             slideOutOfContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(300)
+                                animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                targetOffset = { it / 4 }
+                            ) + fadeOut(
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + scaleOut(
+                                targetScale = 0.92f,
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
                             )
                         },
                         popEnterTransition = {
                             slideIntoContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(300)
+                                animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                initialOffset = { it / 4 }
+                            ) + fadeIn(
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                            ) + scaleIn(
+                                initialScale = 0.92f,
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
                             )
                         },
                         popExitTransition = {
                             slideOutOfContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(300)
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                            ) + fadeOut(
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + scaleOut(
+                                targetScale = 0.85f,
+                                animationSpec = tween(450, easing = FastOutSlowInEasing)
                             )
                         }
                     ) {
@@ -100,26 +134,40 @@ class MainActivity : ComponentActivity() {
                             enterTransition = {
                                 slideIntoContainer(
                                     towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                                    animationSpec = tween(400)
-                                ) + fadeIn(animationSpec = tween(400))
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                ) + fadeIn(
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.8f,
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                )
                             },
                             exitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                                    animationSpec = tween(400)
-                                ) + fadeOut(animationSpec = tween(400))
+                                fadeOut(
+                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.95f,
+                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                )
                             },
                             popEnterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                                    animationSpec = tween(400)
-                                ) + fadeIn(animationSpec = tween(400))
+                                fadeIn(
+                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.95f,
+                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                )
                             },
                             popExitTransition = {
                                 slideOutOfContainer(
                                     towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                                    animationSpec = tween(400)
-                                ) + fadeOut(animationSpec = tween(400))
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                ) + fadeOut(
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.8f,
+                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                )
                             }
                         ) {
                             NewCanScreen(onClose = { navController.popBackStack() })
@@ -136,28 +184,54 @@ class MainActivity : ComponentActivity() {
                         composable(
                             "can_detail/{drinkId}",
                             enterTransition = {
-                                scaleIn(
-                                    initialScale = 0.9f,
-                                    animationSpec = tween(300)
-                                ) + fadeIn(animationSpec = tween(300))
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + fadeIn(
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    initialAlpha = 0.3f
+                                ) + scaleIn(
+                                    initialScale = 0.88f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
                             },
                             exitTransition = {
-                                scaleOut(
-                                    targetScale = 0.9f,
-                                    animationSpec = tween(300)
-                                ) + fadeOut(animationSpec = tween(300))
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    targetOffset = { it / 4 }
+                                ) + fadeOut(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                    targetAlpha = 0.5f
+                                ) + scaleOut(
+                                    targetScale = 0.92f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
                             },
                             popEnterTransition = {
-                                scaleIn(
-                                    initialScale = 1.1f,
-                                    animationSpec = tween(300)
-                                ) + fadeIn(animationSpec = tween(300))
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    initialOffset = { it / 4 }
+                                ) + fadeIn(
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    initialAlpha = 0.5f
+                                ) + scaleIn(
+                                    initialScale = 0.92f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
                             },
                             popExitTransition = {
-                                scaleOut(
-                                    targetScale = 1.1f,
-                                    animationSpec = tween(300)
-                                ) + fadeOut(animationSpec = tween(300))
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + fadeOut(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                                    targetAlpha = 0.3f
+                                ) + scaleOut(
+                                    targetScale = 0.88f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
                             }
                         ) { backStackEntry ->
                             val drinkId = backStackEntry.arguments?.getString("drinkId")?.toLongOrNull() ?: 0L
@@ -232,6 +306,8 @@ fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewM
     val currentStreak by viewModel.currentStreak.collectAsState()
     val averageDailyCaffeine by viewModel.averageDailyCaffeine.collectAsState()
 
+    val isLoading = recentDrinks.isEmpty() && totalDrinksCount == 0
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = { ExpressiveTopBar(scrollBehavior) },
@@ -257,12 +333,16 @@ fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewM
             }
 
             item {
-                StatsLazyRow(
-                    totalCans = totalDrinksCount,
-                    favorites = favoritesCount,
-                    streak = currentStreak,
-                    avgCaffeine = averageDailyCaffeine
-                )
+                if (isLoading) {
+                    StatsSkeletonLoader()
+                } else {
+                    StatsLazyRow(
+                        totalCans = totalDrinksCount,
+                        favorites = favoritesCount,
+                        streak = currentStreak,
+                        avgCaffeine = averageDailyCaffeine
+                    )
+                }
             }
 
             item {
@@ -274,12 +354,20 @@ fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewM
                 )
             }
 
-            items(recentDrinks) { drink ->
-                Box(Modifier.padding(horizontal = 16.dp)) {
-                    DrinkHistoryItem(
-                        drink = drink,
-                        onClick = { navController.navigate("can_detail/${drink.id}") }
-                    )
+            if (isLoading) {
+                items(3) {
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        DrinkItemSkeleton()
+                    }
+                }
+            } else {
+                items(recentDrinks) { drink ->
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        DrinkHistoryItem(
+                            drink = drink,
+                            onClick = { navController.navigate("can_detail/${drink.id}") }
+                        )
+                    }
                 }
             }
 
@@ -387,6 +475,214 @@ fun StatCard(item: StatData) {
                     maxLines = 1,
                     softWrap = false
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun StatsSkeletonLoader() {
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Box(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha)
+                        )
+                )
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha * 0.7f)
+                        )
+                )
+            }
+        }
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(4) { index ->
+                StatCardSkeleton(shimmerAlpha, index)
+            }
+        }
+    }
+}
+
+@Composable
+fun StatCardSkeleton(shimmerAlpha: Float, index: Int) {
+    val colors = listOf(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.tertiaryContainer,
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    )
+
+    Surface(
+        modifier = Modifier
+            .width(180.dp)
+            .height(145.dp),
+        color = colors[index % colors.size],
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 2.dp,
+        shadowElevation = 2.dp
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Icon skeleton
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(
+                            MaterialTheme.colorScheme.surface.copy(alpha = shimmerAlpha)
+                        )
+                )
+
+                // Value and label skeleton
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = shimmerAlpha)
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(100.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = shimmerAlpha * 0.7f)
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DrinkItemSkeleton() {
+    val infiniteTransition = rememberInfiniteTransition(label = "drinkSkeleton")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Image skeleton
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha)
+                    )
+            )
+
+            // Content skeleton
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Title skeleton
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha)
+                            )
+                    )
+                    // Subtitle skeleton
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha * 0.7f)
+                            )
+                    )
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Tag skeletons
+                    repeat(2) {
+                        Box(
+                            modifier = Modifier
+                                .width(60.dp)
+                                .height(24.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha * 0.5f)
+                                )
+                        )
+                    }
+                }
             }
         }
     }
