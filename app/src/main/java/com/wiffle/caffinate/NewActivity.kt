@@ -22,29 +22,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.wiffle.caffinate.data.Drink
+import com.wiffle.caffinate.data.DrinkViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewCanScreen(onClose: () -> Unit) {
+fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
     val scrollState = rememberScrollState()
-    var flavor by remember { mutableStateOf("") }
+    var drinkName by remember { mutableStateOf("") }
+    var brand by remember { mutableStateOf("Monster Energy") }
     var notes by remember { mutableStateOf("") }
     var rating by remember { mutableFloatStateOf(4.5f) }
-    val categories = listOf("Energy", "Rehab", "Java", "Hydro")
-    var selectedCategory by remember { mutableStateOf("Energy") }
+    var caffeineContent by remember { mutableStateOf("160") }
+    var sugarContent by remember { mutableStateOf("54") }
+    var calories by remember { mutableStateOf("210") }
+    var size by remember { mutableStateOf("16 fl oz (473ml)") }
+    var location by remember { mutableStateOf("") }
+    var imageUrl by remember { mutableStateOf("") }
+    var selectedTags by remember { mutableStateOf(setOf<String>()) }
+
+    val categories = listOf("Energy Drink", "Coffee Energy Drink", "Performance Energy Drink", "Zero Sugar")
+    var selectedCategory by remember { mutableStateOf("Energy Drink") }
+
+    val availableTags =
+        listOf("Sweet", "Citrus", "Tropical", "Zero Sugar", "Carbonated", "Creamy", "High Caffeine", "Light")
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Add New Can", style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        "Add New Can",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* More options */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More")
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -54,7 +75,36 @@ fun NewCanScreen(onClose: () -> Unit) {
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { /* Save action */ },
+                onClick = {
+                    if (drinkName.isBlank()) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Please enter a drink name")
+                        }
+                        return@ExtendedFloatingActionButton
+                    }
+
+                    val newDrink = Drink(
+                        name = drinkName,
+                        brand = brand,
+                        category = selectedCategory,
+                        caffeineContent = caffeineContent.toIntOrNull() ?: 0,
+                        sugarContent = sugarContent.toIntOrNull() ?: 0,
+                        size = size,
+                        sizeInMl = 473,
+                        location = location,
+                        rating = rating,
+                        imageUrl = imageUrl,
+                        consumedDate = System.currentTimeMillis(),
+                        notes = notes,
+                        tags = selectedTags.toList(),
+                        isFavorite = false,
+                        calories = calories.toIntOrNull() ?: 0,
+                        timesConsumed = 1
+                    )
+
+                    viewModel.insertDrink(newDrink)
+                    onClose()
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = MaterialTheme.shapes.large,
@@ -77,7 +127,7 @@ fun NewCanScreen(onClose: () -> Unit) {
                     .aspectRatio(16f / 10f)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .clickable { /* Add photo */ },
+                    .clickable { },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -96,11 +146,38 @@ fun NewCanScreen(onClose: () -> Unit) {
                 }
             }
 
+            TextField(
+                value = drinkName,
+                onValueChange = { drinkName = it },
+                label = { Text("Drink Name *") },
+                placeholder = { Text("e.g. Ultra Paradise") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                singleLine = true
+            )
+
+            TextField(
+                value = brand,
+                onValueChange = { brand = it },
+                label = { Text("Brand") },
+                placeholder = { Text("e.g. Monster Energy") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                singleLine = true
+            )
+
             Column {
                 Text(
-                    "Can Type",
+                    "Category",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(12.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -109,7 +186,113 @@ fun NewCanScreen(onClose: () -> Unit) {
                         FilterChip(
                             selected = isSelected,
                             onClick = { selectedCategory = category },
-                            label = { Text(category) },
+                            label = { Text(category, style = MaterialTheme.typography.labelMedium) },
+                            leadingIcon = if (isSelected) {
+                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextField(
+                    value = caffeineContent,
+                    onValueChange = { caffeineContent = it },
+                    label = { Text("Caffeine (mg)") },
+                    placeholder = { Text("160") },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    singleLine = true
+                )
+                TextField(
+                    value = sugarContent,
+                    onValueChange = { sugarContent = it },
+                    label = { Text("Sugar (g)") },
+                    placeholder = { Text("54") },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    singleLine = true
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextField(
+                    value = size,
+                    onValueChange = { size = it },
+                    label = { Text("Size") },
+                    placeholder = { Text("16 fl oz (473ml)") },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    singleLine = true
+                )
+                TextField(
+                    value = calories,
+                    onValueChange = { calories = it },
+                    label = { Text("Calories") },
+                    placeholder = { Text("210") },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    singleLine = true
+                )
+            }
+
+            TextField(
+                value = location,
+                onValueChange = { location = it },
+                label = { Text("Location (Optional)") },
+                placeholder = { Text("e.g. 7-Eleven, Austin TX") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                singleLine = true
+            )
+
+            Column {
+                Text(
+                    "Tags",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(availableTags) { tag ->
+                        val isSelected = selectedTags.contains(tag)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                selectedTags = if (isSelected) {
+                                    selectedTags - tag
+                                } else {
+                                    selectedTags + tag
+                                }
+                            },
+                            label = { Text(tag, style = MaterialTheme.typography.labelMedium) },
                             leadingIcon = if (isSelected) {
                                 { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                             } else null,
@@ -119,45 +302,6 @@ fun NewCanScreen(onClose: () -> Unit) {
                             )
                         )
                     }
-                }
-            }
-
-            TextField(
-                value = flavor,
-                onValueChange = { flavor = it },
-                label = { Text("Flavor / Name") },
-                placeholder = { Text("e.g. Ultra Paradise") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            )
-
-            Surface(
-                onClick = { /* Open Date Picker */ },
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            "Date Consumed",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text("Oct 24, 2023", style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -217,7 +361,8 @@ fun NewCanScreen(onClose: () -> Unit) {
                 placeholder = { Text("Flavor profile, carbonation level...") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 120.dp),
+                    .height(140.dp),
+                maxLines = 6,
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
