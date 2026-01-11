@@ -25,6 +25,7 @@ data class Drink(
     val isFavorite: Boolean = false,
     val calories: Int = 0,
     val timesConsumed: Int = 1,
+    val consumptionDates: List<Long> = listOf(System.currentTimeMillis()),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

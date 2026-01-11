@@ -1,6 +1,7 @@
 package com.wiffle.caffinate.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.Calendar
 
 class DrinkRepository(private val drinkDao: DrinkDao) {
@@ -17,7 +18,7 @@ class DrinkRepository(private val drinkDao: DrinkDao) {
 
     fun getFavoritesCount(): Flow<Int> = drinkDao.getFavoritesCount()
 
-    fun getTodaysCaffeineIntake(): Flow<Int?> {
+    fun getTodaysCaffeineIntake(): Flow<Int> {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
@@ -28,7 +29,14 @@ class DrinkRepository(private val drinkDao: DrinkDao) {
         calendar.add(Calendar.DAY_OF_YEAR, 1)
         val endOfDay = calendar.timeInMillis
 
-        return drinkDao.getTotalCaffeineForDay(startOfDay, endOfDay)
+        return getAllDrinks().map { drinks ->
+            drinks.sumOf { drink ->
+                val consumptionsToday = drink.consumptionDates.count { timestamp ->
+                    timestamp in startOfDay until endOfDay
+                }
+                drink.caffeineContent * consumptionsToday
+            }
+        }
     }
 
 
@@ -43,7 +51,13 @@ class DrinkRepository(private val drinkDao: DrinkDao) {
         calendar.add(Calendar.DAY_OF_YEAR, 1)
         val endOfDay = calendar.timeInMillis
 
-        return drinkDao.getDrinksCountForDay(startOfDay, endOfDay)
+        return getAllDrinks().map { drinks ->
+            drinks.sumOf { drink ->
+                drink.consumptionDates.count { timestamp ->
+                    timestamp in startOfDay until endOfDay
+                }
+            }
+        }
     }
 
 
@@ -93,6 +107,21 @@ class DrinkRepository(private val drinkDao: DrinkDao) {
 
 
     suspend fun incrementTimesConsumed(drinkId: Long) {
-        drinkDao.incrementTimesConsumed(drinkId, System.currentTimeMillis())
+        val originalDrink = getDrinkById(drinkId)
+
+        originalDrink?.let { drink ->
+            val updatedConsumptionDates = drink.consumptionDates.toMutableList().apply {
+                add(System.currentTimeMillis())
+            }
+
+            val updatedDrink = drink.copy(
+                consumptionDates = updatedConsumptionDates,
+                timesConsumed = drink.timesConsumed + 1,
+                consumedDate = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+
+            updateDrink(updatedDrink)
+        }
     }
 }

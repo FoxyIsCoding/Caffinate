@@ -36,7 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -65,6 +67,7 @@ import com.wiffle.caffinate.data.DrinkViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -333,16 +336,12 @@ fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewM
             }
 
             item {
-                if (isLoading) {
-                    StatsSkeletonLoader()
-                } else {
-                    StatsLazyRow(
-                        totalCans = totalDrinksCount,
-                        favorites = favoritesCount,
-                        streak = currentStreak,
-                        avgCaffeine = averageDailyCaffeine
-                    )
-                }
+                StatsLazyRow(
+                    totalCans = totalDrinksCount,
+                    favorites = favoritesCount,
+                    streak = currentStreak,
+                    avgCaffeine = averageDailyCaffeine
+                )
             }
 
             item {
@@ -416,189 +415,193 @@ fun StatsLazyRow(
 
     val lazyListState = rememberLazyListState()
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    var titleVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        titleVisible = true
+    }
+
+    val titleOffset by animateDpAsState(
+        targetValue = if (titleVisible) 0.dp else (-20).dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "titleOffset"
+    )
+
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (titleVisible) 1f else 0f,
+        animationSpec = tween(600),
+        label = "titleAlpha"
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             "Quick Stats",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .offset(y = titleOffset)
+                .alpha(titleAlpha)
         )
 
         LazyRow(
             state = lazyListState,
             flingBehavior = rememberSnapFlingBehavior(lazyListState = lazyListState),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(stats) { item ->
-                StatCard(item)
-            }
-        }
-    }
-}
-
-@Composable
-fun StatCard(item: StatData) {
-    Surface(
-        modifier = Modifier.width(165.dp).height(130.dp),
-        color = item.containerColor,
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 3.dp,
-        shadowElevation = 1.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Icon(item.icon, null, tint = item.contentColor, modifier = Modifier.size(32.dp))
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = item.value,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black,
-                    color = item.contentColor,
-                    letterSpacing = (-0.5).sp,
-                    maxLines = 1,
-                    softWrap = false
-                )
-                Text(
-                    text = item.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = item.contentColor.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun StatsSkeletonLoader() {
-    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
-    val shimmerAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shimmerAlpha"
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .width(140.dp)
-                        .height(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha)
-                        )
-                )
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .width(200.dp)
-                        .height(16.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha * 0.7f)
-                        )
-                )
-            }
-        }
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 24.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(4) { index ->
-                StatCardSkeleton(shimmerAlpha, index)
+            itemsIndexed(stats) { index, item ->
+                StatCard(item, index)
             }
         }
     }
 }
 
 @Composable
-fun StatCardSkeleton(shimmerAlpha: Float, index: Int) {
-    val colors = listOf(
-        MaterialTheme.colorScheme.primaryContainer,
-        MaterialTheme.colorScheme.secondaryContainer,
-        MaterialTheme.colorScheme.tertiaryContainer,
-        MaterialTheme.colorScheme.surfaceContainerHigh
+fun StatCard(item: StatData, index: Int = 0) {
+    var isPressed by remember { mutableStateOf(false) }
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay((index * 100L))
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = when {
+            !isVisible -> 0.8f
+            isPressed -> 0.95f
+            else -> 1f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(500),
+        label = "alpha"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 1.dp else 4.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "elevation"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "iconAnimation")
+    val iconRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (item.icon == Icons.Rounded.LocalFireDepartment) 15f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconRotation"
+    )
+
+    val iconScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (item.icon == Icons.Rounded.Bolt) 1.15f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconScale"
     )
 
     Surface(
         modifier = Modifier
             .width(180.dp)
-            .height(145.dp),
-        color = colors[index % colors.size],
-        shape = RoundedCornerShape(28.dp),
-        tonalElevation = 2.dp,
-        shadowElevation = 2.dp
+            .height(145.dp)
+            .scale(scale)
+            .alpha(alpha)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    }
+                )
+            },
+        color = item.containerColor,
+        shape = RoundedCornerShape(36.dp),
+        tonalElevation = 6.dp,
+        shadowElevation = elevation
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
+            Box(
                 modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Icon skeleton
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(
-                            MaterialTheme.colorScheme.surface.copy(alpha = shimmerAlpha)
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                item.contentColor.copy(alpha = 0.1f),
+                                Color.Transparent
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset.Infinite
                         )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(22.dp)
+            ) {
+                Icon(
+                    item.icon,
+                    null,
+                    tint = item.contentColor,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .align(Alignment.TopStart)
+                        .rotate(iconRotation)
+                        .scale(iconScale)
                 )
 
-                // Value and label skeleton
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = shimmerAlpha)
-                            )
+                    Text(
+                        text = item.value,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                        color = item.contentColor,
+                        letterSpacing = (-0.5).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                        fontSize = 30.sp
                     )
-                    Box(
-                        modifier = Modifier
-                            .width(100.dp)
-                            .height(16.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = shimmerAlpha * 0.7f)
-                            )
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = item.contentColor.copy(alpha = 0.85f),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        letterSpacing = 0.3.sp
                     )
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun DrinkItemSkeleton() {
@@ -695,8 +698,44 @@ fun DailyLimitHero(todaysCaffeineIntake: Int = 0) {
     val actualPercentage = (todaysCaffeineIntake.toFloat() / dailyLimit * 100).roundToInt()
     val isOverLimit = todaysCaffeineIntake > dailyLimit
 
+    var isPressed by remember { mutableStateOf(false) }
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(200)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = when {
+            !isVisible -> 0.95f
+            isPressed -> 0.98f
+            else -> 1f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(600),
+        label = "cardAlpha"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 6.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "elevation"
+    )
+
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val alpha by infiniteTransition.animateFloat(
+    val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -706,9 +745,43 @@ fun DailyLimitHero(todaysCaffeineIntake: Int = 0) {
         label = "alpha"
     )
 
+    val iconRotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconRotation"
+    )
+
+    val iconScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconScale"
+    )
+
     Card(
-        modifier = Modifier.fillMaxWidth().height(160.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(175.dp)
+            .scale(scale)
+            .alpha(cardAlpha)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    }
+                )
+            },
+        shape = RoundedCornerShape(36.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         colors = CardDefaults.cardColors(
             containerColor = if (isOverLimit)
                 MaterialTheme.colorScheme.errorContainer
@@ -716,64 +789,98 @@ fun DailyLimitHero(todaysCaffeineIntake: Int = 0) {
                 MaterialTheme.colorScheme.primaryContainer
         )
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "TODAY'S INTAKE",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Black,
-                    color = if (isOverLimit)
-                        MaterialTheme.colorScheme.onErrorContainer
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                if (isOverLimit)
+                                    MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.08f)
+                                else
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.08f),
+                                Color.Transparent
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset.Infinite
+                        )
+                    )
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(28.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "TODAY'S INTAKE",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black,
+                        color = if (isOverLimit)
+                            MaterialTheme.colorScheme.onErrorContainer
+                        else
+                            MaterialTheme.colorScheme.onPrimaryContainer,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        "${todaysCaffeineIntake}mg",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Black,
+                        color = if (isOverLimit)
+                            MaterialTheme.colorScheme.onErrorContainer
+                        else
+                            MaterialTheme.colorScheme.onPrimaryContainer,
+                        letterSpacing = (-1).sp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(14.dp)
+                            .clip(CircleShape),
+                        color = if (isOverLimit)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onPrimaryContainer,
+                        trackColor = if (isOverLimit)
+                            MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.3f)
+                        else
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                    )
+                    Text(
+                        if (isOverLimit)
+                            "$actualPercentage% - OVER LIMIT!"
+                        else
+                            "$actualPercentage% of daily limit",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isOverLimit)
+                            MaterialTheme.colorScheme.error.copy(alpha = pulseAlpha)
+                        else
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                        fontWeight = if (isOverLimit) FontWeight.Bold else FontWeight.Medium,
+                        letterSpacing = 0.3.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                Icon(
+                    Icons.Rounded.Bolt,
+                    null,
+                    tint = if (isOverLimit)
+                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.12f)
                     else
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    "${todaysCaffeineIntake}mg",
-                    style = MaterialTheme.typography.displayMedium,
-                    color = if (isOverLimit)
-                        MaterialTheme.colorScheme.onErrorContainer
-                    else
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape),
-                    color = if (isOverLimit)
-                        MaterialTheme.colorScheme.error
-                    else
-                        MaterialTheme.colorScheme.onPrimaryContainer,
-                    trackColor = if (isOverLimit)
-                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.3f)
-                    else
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
-                )
-                Text(
-                    if (isOverLimit)
-                        "$actualPercentage% - OVER LIMIT!"
-                    else
-                        "$actualPercentage% of daily limit",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isOverLimit)
-                        MaterialTheme.colorScheme.error.copy(alpha = alpha)
-                    else
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    fontWeight = if (isOverLimit) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.padding(top = 4.dp)
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
+                    modifier = Modifier
+                        .size(90.dp)
+                        .rotate(iconRotation)
+                        .scale(iconScale)
                 )
             }
-            Icon(
-                Icons.Rounded.Bolt,
-                null,
-                tint = if (isOverLimit)
-                    MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.15f)
-                else
-                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f),
-                modifier = Modifier.size(80.dp)
-            )
         }
     }
 }
