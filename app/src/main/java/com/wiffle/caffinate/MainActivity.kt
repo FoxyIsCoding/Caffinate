@@ -9,7 +9,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -85,48 +87,48 @@ class MainActivity : ComponentActivity() {
                         startDestination = "loading",
                         enterTransition = {
                             slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             ) + fadeIn(
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             ) + scaleIn(
-                                initialScale = 0.85f,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                initialScale = 0.9f,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             )
                         },
                         exitTransition = {
                             slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                targetOffset = { it / 4 }
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             ) + fadeOut(
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             ) + scaleOut(
-                                targetScale = 0.92f,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                targetScale = 0.95f,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             )
                         },
                         popEnterTransition = {
                             slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                initialOffset = { it / 4 }
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing),
+                                initialOffset = { (it * 0.1f).toInt() }
                             ) + fadeIn(
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                animationSpec = tween(400, easing = FastOutSlowInEasing),
+                                initialAlpha = 0.5f
                             ) + scaleIn(
-                                initialScale = 0.92f,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                initialScale = 0.95f,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             )
                         },
                         popExitTransition = {
                             slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             ) + fadeOut(
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             ) + scaleOut(
-                                targetScale = 0.85f,
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                targetScale = 0.9f,
+                                animationSpec = tween(400, easing = FastOutSlowInEasing)
                             )
                         }
                     ) {
@@ -243,6 +245,113 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() }
                             )
                         }
+
+                        composable(
+                            "settings",
+                            enterTransition = {
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + fadeIn(
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.85f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    targetOffset = { it / 4 }
+                                ) + fadeOut(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.92f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            },
+                            popEnterTransition = {
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    initialOffset = { it / 4 }
+                                ) + fadeIn(
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.92f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + fadeOut(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.85f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            }
+                        ) {
+                            SettingsScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToBackup = { navController.navigate("backup") }
+                            )
+                        }
+
+                        composable(
+                            "backup",
+                            enterTransition = {
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + fadeIn(
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.85f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    targetOffset = { it / 4 }
+                                ) + fadeOut(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.92f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            },
+                            popEnterTransition = {
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                                    initialOffset = { it / 4 }
+                                ) + fadeIn(
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.92f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            },
+                            popExitTransition = {
+                                slideOutOfContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                ) + fadeOut(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.85f,
+                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
+                                )
+                            }
+                        ) {
+                            BackupManagementScreen(onBack = { navController.popBackStack() })
+                        }
                     }
                 }
             }
@@ -313,8 +422,8 @@ fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewM
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = { ExpressiveTopBar(scrollBehavior) },
-        bottomBar = { ExpressiveNavBar() },
+        topBar = { ExpressiveTopBar(scrollBehavior, navController) },
+        bottomBar = { ExpressiveNavBar(navController) },
         floatingActionButton = { ExpressiveFAB({ navController.navigate("new_can") }) }
     ) { padding ->
         LazyColumn(
@@ -887,21 +996,82 @@ fun DailyLimitHero(todaysCaffeineIntake: Int = 0) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ExpressiveTopBar(scrollBehavior: TopAppBarScrollBehavior) {
-    MediumTopAppBar(
+fun ExpressiveTopBar(scrollBehavior: TopAppBarScrollBehavior, navController: NavHostController) {
+    val infiniteTransition = rememberInfiniteTransition(label = "coffee")
+    val coffeeRotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rotation"
+    )
+
+    TopAppBar(
         title = {
-            Text(
-                "Caffinate",
-                fontWeight = FontWeight.Black,
-                style = MaterialTheme.typography.headlineLarge,
-                letterSpacing = (-0.5).sp
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.LocalCafe,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .rotate(coffeeRotation),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Caffinate",
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.headlineMedium,
+                    letterSpacing = (-0.5).sp
+                )
+            }
+        },
+        actions = {
+            var isPressed by remember { mutableStateOf(false) }
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.85f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "scale"
             )
+
+            IconButton(
+                onClick = { navController.navigate("settings") },
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .scale(scale)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        CircleShape
+                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                tryAwaitRelease()
+                                isPressed = false
+                            }
+                        )
+                    }
+            ) {
+                Icon(
+                    Icons.Rounded.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         },
         scrollBehavior = scrollBehavior,
-        colors = TopAppBarDefaults.mediumTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
-            titleContentColor = MaterialTheme.colorScheme.onBackground
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     )
 }
@@ -1011,11 +1181,11 @@ fun ExpressiveFAB(onClick: () -> Unit) {
 
 
 @Composable
-fun ExpressiveNavBar() {
+fun ExpressiveNavBar(navController: NavHostController) {
     NavigationBar {
         NavigationBarItem(
             selected = true,
-            onClick = {},
+            onClick = { navController.navigate("home") },
             icon = { Icon(Icons.Rounded.Home, null) },
             label = { Text("Home") })
         NavigationBarItem(
