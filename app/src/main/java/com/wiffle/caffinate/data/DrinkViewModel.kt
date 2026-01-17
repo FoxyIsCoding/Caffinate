@@ -143,7 +143,7 @@ class DrinkViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun toggleFavorite(drinkId: Long) {
+    fun toggleFavorite(drinkId: Long, bool: Boolean) {
         viewModelScope.launch {
             repository.toggleFavorite(drinkId)
         }

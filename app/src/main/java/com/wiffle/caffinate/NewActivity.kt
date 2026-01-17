@@ -62,17 +62,14 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
     var showImageOptions by remember { mutableStateOf(false) }
     var shouldLaunchCamera by remember { mutableStateOf(false) }
 
-    // Camera permission state
     val cameraPermissionState = rememberPermissionState(
         permission = android.Manifest.permission.CAMERA
     )
 
-    // Gallery/Photo picker launcher
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         uri?.let {
-            // Copy the selected image to app's private storage
             val copiedFile = CameraUtils.copyImageFromUri(context, it)
             if (copiedFile != null) {
                 imageUrl = copiedFile.absolutePath
@@ -81,12 +78,10 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
         }
     }
 
-    // Camera launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success && capturedImageFile != null) {
-            // Compress and save the image
             val compressedFile = CameraUtils.compressAndSaveImage(context, capturedImageFile!!)
             if (compressedFile != null) {
                 imageUrl = compressedFile.absolutePath
@@ -95,7 +90,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
         }
     }
 
-    // Function to launch camera
     val launchCamera: () -> Unit = {
         val file = CameraUtils.createImageFile(context)
         capturedImageFile = file
@@ -103,7 +97,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
         cameraLauncher.launch(uri)
     }
 
-    // Function to launch gallery picker
     val launchGalleryPicker: () -> Unit = {
         photoPickerLauncher.launch(
             androidx.activity.result.PickVisualMediaRequest(
@@ -112,7 +105,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
         )
     }
 
-    // Auto-launch camera when permission is granted
     LaunchedEffect(cameraPermissionState.status.isGranted, shouldLaunchCamera) {
         if (cameraPermissionState.status.isGranted && shouldLaunchCamera) {
             shouldLaunchCamera = false
@@ -212,7 +204,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                 contentAlignment = Alignment.Center
             ) {
                 if (imageUrl.isNotEmpty()) {
-                    // Display captured image
                     AsyncImage(
                         model = imageUrl,
                         contentDescription = "Drink photo",
@@ -220,10 +211,8 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                         contentScale = ContentScale.Crop
                     )
 
-                    // Delete button overlay
                     IconButton(
                         onClick = {
-                            // Delete the image file
                             if (capturedImageFile != null) {
                                 CameraUtils.deleteImageFile(imageUrl)
                             }
@@ -245,7 +234,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                         )
                     }
                 } else {
-                    // Placeholder when no image
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             Icons.Default.AddAPhoto,
@@ -263,7 +251,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                 }
             }
 
-            // Image options dialog - Material 3 Expressive
             if (showImageOptions) {
                 AlertDialog(
                     onDismissRequest = { showImageOptions = false },
@@ -293,7 +280,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Take Photo Card
                             Surface(
                                 onClick = {
                                     showImageOptions = false
@@ -348,7 +334,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                                 }
                             }
 
-                            // Choose from Gallery Card
                             Surface(
                                 onClick = {
                                     showImageOptions = false
@@ -419,7 +404,6 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                 )
             }
 
-            // Permission rationale dialog - Material 3 Expressive
             if (cameraPermissionState.status.shouldShowRationale) {
                 AlertDialog(
                     onDismissRequest = { },

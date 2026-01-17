@@ -16,9 +16,6 @@ import java.util.*
 
 object CameraUtils {
 
-    /**
-     * Creates a temporary file for storing the captured image
-     */
     fun createImageFile(context: Context): File {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val imageFileName = "CAFFINATE_${timeStamp}"
@@ -35,9 +32,6 @@ object CameraUtils {
         )
     }
 
-    /**
-     * Creates a content URI for the image file using FileProvider
-     */
     fun getImageUri(context: Context, file: File): Uri {
         return FileProvider.getUriForFile(
             context,
@@ -46,38 +40,28 @@ object CameraUtils {
         )
     }
 
-    /**
-     * Compresses and saves the image to reduce storage size
-     */
     fun compressAndSaveImage(context: Context, sourceFile: File): File? {
         try {
-            // Decode the image to get dimensions
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
             }
             BitmapFactory.decodeFile(sourceFile.absolutePath, options)
 
-            // Calculate inSampleSize
             options.inSampleSize = calculateInSampleSize(options, 1024, 1024)
 
-            // Decode with inSampleSize
             options.inJustDecodeBounds = false
             var bitmap = BitmapFactory.decodeFile(sourceFile.absolutePath, options)
 
-            // Rotate bitmap if needed based on EXIF data
             bitmap = rotateImageIfRequired(bitmap, sourceFile.absolutePath)
 
-            // Create final file
             val finalFile = createImageFile(context)
 
-            // Compress and save
             FileOutputStream(finalFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
             }
 
             bitmap.recycle()
 
-            // Delete the original file if compression was successful
             sourceFile.delete()
 
             return finalFile
@@ -87,9 +71,6 @@ object CameraUtils {
         }
     }
 
-    /**
-     * Calculate sample size for bitmap decoding to reduce memory usage
-     */
     private fun calculateInSampleSize(
         options: BitmapFactory.Options,
         reqWidth: Int,
@@ -113,9 +94,6 @@ object CameraUtils {
         return inSampleSize
     }
 
-    /**
-     * Rotate image based on EXIF orientation data
-     */
     private fun rotateImageIfRequired(bitmap: Bitmap, imagePath: String): Bitmap {
         try {
             val exif = ExifInterface(imagePath)
@@ -136,9 +114,6 @@ object CameraUtils {
         }
     }
 
-    /**
-     * Rotate bitmap by specified degrees
-     */
     private fun rotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
         val matrix = Matrix().apply {
             postRotate(degrees)
@@ -158,9 +133,6 @@ object CameraUtils {
         return rotatedBitmap
     }
 
-    /**
-     * Delete an image file
-     */
     fun deleteImageFile(imagePath: String): Boolean {
         return try {
             val file = File(imagePath)
@@ -175,9 +147,6 @@ object CameraUtils {
         }
     }
 
-    /**
-     * Get file size in a human-readable format
-     */
     fun getFileSize(file: File): String {
         val bytes = file.length()
         return when {
@@ -187,32 +156,23 @@ object CameraUtils {
         }
     }
 
-    /**
-     * Copy image from URI (gallery picker) to app's private storage
-     * and compress it
-     */
     fun copyImageFromUri(context: Context, uri: Uri): File? {
         return try {
-            // Open input stream from the URI
             val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
 
             if (inputStream == null) {
                 return null
             }
 
-            // Create a temporary file to save the image
             val tempFile = createImageFile(context)
 
-            // Copy the stream to the temp file
             FileOutputStream(tempFile).use { outputStream ->
                 inputStream.copyTo(outputStream)
             }
             inputStream.close()
 
-            // Now compress and save the image
             val compressedFile = compressAndSaveImage(context, tempFile)
 
-            // Return the compressed file (temp file is already deleted in compressAndSaveImage)
             compressedFile
         } catch (e: Exception) {
             e.printStackTrace()

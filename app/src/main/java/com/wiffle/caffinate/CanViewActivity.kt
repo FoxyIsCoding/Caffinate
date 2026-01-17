@@ -132,7 +132,6 @@ fun CanDetailsScreen(
                                     modifier = Modifier.padding(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // Edit option
                                     Surface(
                                         onClick = {
                                             showMenu = false
@@ -164,7 +163,6 @@ fun CanDetailsScreen(
                                         }
                                     }
 
-                                    // Delete option
                                     Surface(
                                         onClick = {
                                             showMenu = false
@@ -924,7 +922,6 @@ fun EditCanScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Can Name
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Can Name",
@@ -947,7 +944,6 @@ fun EditCanScreen(
                 )
             }
 
-            // Brand
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Brand",
@@ -970,7 +966,6 @@ fun EditCanScreen(
                 )
             }
 
-            // Rating
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1004,7 +999,6 @@ fun EditCanScreen(
                 )
             }
 
-            // Nutrition Row 1
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1053,7 +1047,6 @@ fun EditCanScreen(
                 }
             }
 
-            // Nutrition Row 2
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1102,7 +1095,6 @@ fun EditCanScreen(
                 }
             }
 
-            // Location
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Location",
@@ -1125,7 +1117,6 @@ fun EditCanScreen(
                 )
             }
 
-            // Category
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Category",
@@ -1160,7 +1151,6 @@ fun EditCanScreen(
                 }
             }
 
-            // Tags
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Tags",
@@ -1201,7 +1191,6 @@ fun EditCanScreen(
                 }
             }
 
-            // Notes
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Notes",

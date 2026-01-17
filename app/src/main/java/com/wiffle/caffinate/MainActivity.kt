@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -61,6 +62,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -82,279 +84,393 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    NavHost(
+                    MainAppWithNavigation(navController = navController)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MainAppWithNavigation(navController: NavHostController) {
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = currentBackStackEntry?.destination?.route
+
+    val navbarRoutes = listOf("home", "gallery")
+    val showNavbar = currentDestination in navbarRoutes
+
+    val homeViewModel: DrinkViewModel = viewModel()
+    val galleryViewModel: DrinkViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        homeViewModel.recentDrinks.value
+        galleryViewModel.allDrinks.value
+    }
+
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        rememberTopAppBarState(),
+        canScroll = { true }
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = "loading",
+            modifier = Modifier.fillMaxSize(),
+            enterTransition = {
+                val isHomeToGallery =
+                    initialState.destination.route == "home" && targetState.destination.route == "gallery"
+                val isGalleryToHome =
+                    initialState.destination.route == "gallery" && targetState.destination.route == "home"
+
+                when {
+                    isHomeToGallery -> slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(200, easing = FastOutSlowInEasing)
+                    ) + fadeIn(animationSpec = tween(100, easing = FastOutSlowInEasing))
+
+                    isGalleryToHome -> slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(200, easing = FastOutSlowInEasing)
+                    ) + fadeIn(animationSpec = tween(100, easing = FastOutSlowInEasing))
+
+                    else -> slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.9f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                }
+            },
+            exitTransition = {
+                val isHomeToGallery =
+                    initialState.destination.route == "home" && targetState.destination.route == "gallery"
+                val isGalleryToHome =
+                    initialState.destination.route == "gallery" && targetState.destination.route == "home"
+
+                when {
+                    isHomeToGallery -> slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(200, easing = FastOutSlowInEasing)
+                    ) + fadeOut(animationSpec = tween(100, easing = FastOutSlowInEasing))
+
+                    isGalleryToHome -> slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(200, easing = FastOutSlowInEasing)
+                    ) + fadeOut(animationSpec = tween(100, easing = FastOutSlowInEasing))
+
+                    else -> slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.95f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                }
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                    initialOffset = { (it * 0.1f).toInt() }
+                ) + fadeIn(
+                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                    initialAlpha = 0.5f
+                ) + scaleIn(
+                    initialScale = 0.95f,
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                )
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                ) + fadeOut(
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                ) + scaleOut(
+                    targetScale = 0.9f,
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                )
+            }
+        ) {
+            composable("home") {
+                Scaffold(
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    topBar = { ExpressiveTopBar(scrollBehavior, navController) },
+                    floatingActionButton = {
+                        Box(modifier = Modifier.padding(bottom = 80.dp)) {
+                            ExpressiveFAB({ navController.navigate("new_can") })
+                        }
+                    },
+                    floatingActionButtonPosition = FabPosition.End
+                ) { padding ->
+                    MonsterTrackerContent(
                         navController = navController,
-                        startDestination = "loading",
-                        enterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            ) + fadeIn(
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            ) + scaleIn(
-                                initialScale = 0.9f,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        exitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            ) + fadeOut(
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            ) + scaleOut(
-                                targetScale = 0.95f,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popEnterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing),
-                                initialOffset = { (it * 0.1f).toInt() }
-                            ) + fadeIn(
-                                animationSpec = tween(400, easing = FastOutSlowInEasing),
-                                initialAlpha = 0.5f
-                            ) + scaleIn(
-                                initialScale = 0.95f,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            ) + fadeOut(
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            ) + scaleOut(
-                                targetScale = 0.9f,
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            )
-                        }
-                    ) {
-                        composable("home") { MonsterTrackerScreen(navController) }
+                        paddingValues = padding,
+                        viewModel = homeViewModel
+                    )
+                }
+            }
 
-                        composable(
-                            "new_can",
-                            enterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                ) + fadeIn(
-                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                ) + scaleIn(
-                                    initialScale = 0.8f,
-                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            exitTransition = {
-                                fadeOut(
-                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
-                                ) + scaleOut(
-                                    targetScale = 0.95f,
-                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popEnterTransition = {
-                                fadeIn(
-                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
-                                ) + scaleIn(
-                                    initialScale = 0.95f,
-                                    animationSpec = tween(250, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popExitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                ) + fadeOut(
-                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
-                                ) + scaleOut(
-                                    targetScale = 0.8f,
-                                    animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                )
-                            }
-                        ) {
-                            NewCanScreen(onClose = { navController.popBackStack() })
+            composable("gallery") {
+                Scaffold(
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    topBar = { ExpressiveTopBar(scrollBehavior, navController) },
+                    floatingActionButton = {
+                        Box(modifier = Modifier.padding(bottom = 80.dp)) {
+                            ExpressiveFAB({ navController.navigate("new_can") })
                         }
-
-                        composable(
-                            "loading",
-                            enterTransition = { fadeIn(animationSpec = tween(300)) },
-                            exitTransition = { fadeOut(animationSpec = tween(300)) }
-                        ) {
-                            ExpressiveLoadingScreen(navController)
-                        }
-
-                        composable(
-                            "can_detail/{drinkId}",
-                            enterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + fadeIn(
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    initialAlpha = 0.3f
-                                ) + scaleIn(
-                                    initialScale = 0.88f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            exitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    targetOffset = { it / 4 }
-                                ) + fadeOut(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                    targetAlpha = 0.5f
-                                ) + scaleOut(
-                                    targetScale = 0.92f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popEnterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    initialOffset = { it / 4 }
-                                ) + fadeIn(
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    initialAlpha = 0.5f
-                                ) + scaleIn(
-                                    initialScale = 0.92f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popExitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + fadeOut(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing),
-                                    targetAlpha = 0.3f
-                                ) + scaleOut(
-                                    targetScale = 0.88f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            }
-                        ) { backStackEntry ->
-                            val drinkId = backStackEntry.arguments?.getString("drinkId")?.toLongOrNull() ?: 0L
-                            CanDetailsScreen(
-                                drinkId = drinkId,
-                                onBack = { navController.popBackStack() }
-                            )
-                        }
-
-                        composable(
-                            "settings",
-                            enterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + fadeIn(
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + scaleIn(
-                                    initialScale = 0.85f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            exitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    targetOffset = { it / 4 }
-                                ) + fadeOut(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + scaleOut(
-                                    targetScale = 0.92f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popEnterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    initialOffset = { it / 4 }
-                                ) + fadeIn(
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + scaleIn(
-                                    initialScale = 0.92f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popExitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + fadeOut(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + scaleOut(
-                                    targetScale = 0.85f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            }
-                        ) {
-                            SettingsScreen(
-                                onBack = { navController.popBackStack() },
-                                onNavigateToBackup = { navController.navigate("backup") }
-                            )
-                        }
-
-                        composable(
-                            "backup",
-                            enterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + fadeIn(
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + scaleIn(
-                                    initialScale = 0.85f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            exitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    targetOffset = { it / 4 }
-                                ) + fadeOut(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + scaleOut(
-                                    targetScale = 0.92f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popEnterTransition = {
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing),
-                                    initialOffset = { it / 4 }
-                                ) + fadeIn(
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + scaleIn(
-                                    initialScale = 0.92f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            },
-                            popExitTransition = {
-                                slideOutOfContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                ) + fadeOut(
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + scaleOut(
-                                    targetScale = 0.85f,
-                                    animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                )
-                            }
-                        ) {
-                            BackupManagementScreen(onBack = { navController.popBackStack() })
-                        }
+                    },
+                    floatingActionButtonPosition = FabPosition.End
+                ) { padding ->
+                    Box(modifier = Modifier.padding(padding)) {
+                        GalleryScreenContent(
+                            navController = navController,
+                            viewModel = galleryViewModel
+                        )
                     }
                 }
             }
+
+            composable(
+                "new_can",
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.8f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = {
+                    fadeOut(
+                        animationSpec = tween(250, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.95f,
+                        animationSpec = tween(250, easing = FastOutSlowInEasing)
+                    )
+                },
+                popEnterTransition = {
+                    fadeIn(
+                        animationSpec = tween(250, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.95f,
+                        animationSpec = tween(250, easing = FastOutSlowInEasing)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.8f,
+                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) {
+                NewCanScreen(onClose = { navController.popBackStack() })
+            }
+
+            composable(
+                "loading",
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                ExpressiveLoadingScreen(navController)
+            }
+
+            composable(
+                "can_detail/{drinkId}",
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        initialAlpha = 0.3f
+                    ) + scaleIn(
+                        initialScale = 0.88f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        targetOffset = { it / 4 }
+                    ) + fadeOut(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing),
+                        targetAlpha = 0.5f
+                    ) + scaleOut(
+                        targetScale = 0.92f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        initialOffset = { it / 4 }
+                    ) + fadeIn(
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        initialAlpha = 0.5f
+                    ) + scaleIn(
+                        initialScale = 0.92f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing),
+                        targetAlpha = 0.3f
+                    ) + scaleOut(
+                        targetScale = 0.88f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) { backStackEntry ->
+                val drinkId = backStackEntry.arguments?.getString("drinkId")?.toLongOrNull() ?: 0L
+                CanDetailsScreen(
+                    drinkId = drinkId,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                "settings",
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.85f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        targetOffset = { it / 4 }
+                    ) + fadeOut(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.92f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        initialOffset = { it / 4 }
+                    ) + fadeIn(
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.92f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.85f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onNavigateToBackup = { navController.navigate("backup") }
+                )
+            }
+
+            composable(
+                "backup",
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.85f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        targetOffset = { it / 4 }
+                    ) + fadeOut(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.92f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing),
+                        initialOffset = { it / 4 }
+                    ) + fadeIn(
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.92f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.85f,
+                        animationSpec = tween(450, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) {
+                BackupManagementScreen(onBack = { navController.popBackStack() })
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showNavbar,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(250, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(250, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(200)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            ExpressiveNavBar(navController)
         }
     }
 }
@@ -403,14 +519,17 @@ fun MonsterExpressiveTheme(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewModel = viewModel()) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        rememberTopAppBarState(),
-        canScroll = { true }
-    )
+    MonsterTrackerContent(navController = navController, paddingValues = PaddingValues(0.dp), viewModel = viewModel)
+}
 
+@Composable
+fun MonsterTrackerContent(
+    navController: NavHostController,
+    paddingValues: PaddingValues,
+    viewModel: DrinkViewModel = viewModel()
+) {
     val recentDrinks by viewModel.recentDrinks.collectAsState()
     val totalDrinksCount by viewModel.totalDrinksCount.collectAsState()
     val favoritesCount by viewModel.favoritesCount.collectAsState()
@@ -420,67 +539,58 @@ fun MonsterTrackerScreen(navController: NavHostController, viewModel: DrinkViewM
 
     val isLoading = recentDrinks.isEmpty() && totalDrinksCount == 0
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = { ExpressiveTopBar(scrollBehavior, navController) },
-        bottomBar = { ExpressiveNavBar(navController) },
-        floatingActionButton = { ExpressiveFAB({ navController.navigate("new_can") }) }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                bottom = padding.calculateBottomPadding() + 100.dp,
-                start = 0.dp,
-                end = 0.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            item { Spacer(Modifier.height(8.dp)) }
-
-            item {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    DailyLimitHero(todaysCaffeineIntake)
-                }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            top = paddingValues.calculateTopPadding() + 8.dp,
+            bottom = paddingValues.calculateBottomPadding() + 100.dp,
+            start = 0.dp,
+            end = 0.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        item {
+            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                DailyLimitHero(todaysCaffeineIntake)
             }
-
-            item {
-                StatsLazyRow(
-                    totalCans = totalDrinksCount,
-                    favorites = favoritesCount,
-                    streak = currentStreak,
-                    avgCaffeine = averageDailyCaffeine
-                )
-            }
-
-            item {
-                Text(
-                    "Recent Activity",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-            }
-
-            if (isLoading) {
-                items(3) {
-                    Box(Modifier.padding(horizontal = 16.dp)) {
-                        DrinkItemSkeleton()
-                    }
-                }
-            } else {
-                items(recentDrinks) { drink ->
-                    Box(Modifier.padding(horizontal = 16.dp)) {
-                        DrinkHistoryItem(
-                            drink = drink,
-                            onClick = { navController.navigate("can_detail/${drink.id}") }
-                        )
-                    }
-                }
-            }
-
-            item { Spacer(Modifier.height(16.dp)) }
         }
+
+        item {
+            StatsLazyRow(
+                totalCans = totalDrinksCount,
+                favorites = favoritesCount,
+                streak = currentStreak,
+                avgCaffeine = averageDailyCaffeine
+            )
+        }
+
+        item {
+            Text(
+                "Recent Activity",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+        }
+
+        if (isLoading) {
+            items(3) {
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    DrinkItemSkeleton()
+                }
+            }
+        } else {
+            items(recentDrinks) { drink ->
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    DrinkHistoryItem(
+                        drink = drink,
+                        onClick = { navController.navigate("can_detail/${drink.id}") }
+                    )
+                }
+            }
+        }
+
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
@@ -563,66 +673,67 @@ fun StatsLazyRow(
             modifier = Modifier.fillMaxWidth()
         ) {
             itemsIndexed(stats) { index, item ->
-                StatCard(item, index)
+                StatCard(stat = item)
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun StatCard(item: StatData, index: Int = 0) {
+fun StatCard(
+    stat: StatData,
+    modifier: Modifier = Modifier
+) {
     var isPressed by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay((index * 100L))
+        delay(50)
         isVisible = true
     }
 
     val scale by animateFloatAsState(
         targetValue = when {
-            !isVisible -> 0.8f
-            isPressed -> 0.95f
-            else -> 1f
+            isPressed -> 0.92f
+            isVisible -> 1f
+            else -> 0.85f
         },
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessHigh
         ),
         label = "scale"
     )
 
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(500),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
         label = "alpha"
     )
 
     val elevation by animateDpAsState(
-        targetValue = if (isPressed) 1.dp else 4.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        targetValue = if (isPressed) 2.dp else 6.dp,
+        animationSpec = tween(100),
         label = "elevation"
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "iconAnimation")
+    val infiniteTransition = rememberInfiniteTransition(label = "stat")
     val iconRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = if (item.icon == Icons.Rounded.LocalFireDepartment) 15f else 0f,
+        initialValue = -5f,
+        targetValue = 5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = EaseInOutCubic),
+            animation = tween(3000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "iconRotation"
     )
 
     val iconScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (item.icon == Icons.Rounded.Bolt) 1.15f else 1f,
+        initialValue = 0.95f,
+        targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = EaseInOutCubic),
+            animation = tween(2500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "iconScale"
@@ -643,7 +754,7 @@ fun StatCard(item: StatData, index: Int = 0) {
                     }
                 )
             },
-        color = item.containerColor,
+        color = stat.containerColor,
         shape = RoundedCornerShape(36.dp),
         tonalElevation = 6.dp,
         shadowElevation = elevation
@@ -655,8 +766,8 @@ fun StatCard(item: StatData, index: Int = 0) {
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                item.contentColor.copy(alpha = 0.1f),
-                                Color.Transparent
+                                stat.containerColor,
+                                stat.contentColor.copy(alpha = 0.1f)
                             ),
                             start = androidx.compose.ui.geometry.Offset(0f, 0f),
                             end = androidx.compose.ui.geometry.Offset.Infinite
@@ -670,9 +781,9 @@ fun StatCard(item: StatData, index: Int = 0) {
                     .padding(22.dp)
             ) {
                 Icon(
-                    item.icon,
+                    stat.icon,
                     null,
-                    tint = item.contentColor,
+                    tint = stat.contentColor,
                     modifier = Modifier
                         .size(36.dp)
                         .align(Alignment.TopStart)
@@ -687,19 +798,19 @@ fun StatCard(item: StatData, index: Int = 0) {
                         .fillMaxWidth()
                 ) {
                     Text(
-                        text = item.value,
+                        text = stat.value,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
-                        color = item.contentColor,
+                        color = stat.contentColor,
                         letterSpacing = (-0.5).sp,
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                         fontSize = 30.sp
                     )
                     Text(
-                        text = item.label,
+                        text = stat.label,
                         style = MaterialTheme.typography.labelLarge,
-                        color = item.contentColor.copy(alpha = 0.85f),
+                        color = stat.contentColor.copy(alpha = 0.85f),
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -712,12 +823,13 @@ fun StatCard(item: StatData, index: Int = 0) {
 }
 
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DrinkItemSkeleton() {
-    val infiniteTransition = rememberInfiniteTransition(label = "drinkSkeleton")
+    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
     val shimmerAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
+        initialValue = 0.2f,
+        targetValue = 0.5f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -739,7 +851,6 @@ fun DrinkItemSkeleton() {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Image skeleton
             Box(
                 modifier = Modifier
                     .size(88.dp)
@@ -749,7 +860,6 @@ fun DrinkItemSkeleton() {
                     )
             )
 
-            // Content skeleton
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -757,7 +867,6 @@ fun DrinkItemSkeleton() {
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Title skeleton
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.7f)
@@ -767,7 +876,6 @@ fun DrinkItemSkeleton() {
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha)
                             )
                     )
-                    // Subtitle skeleton
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)
@@ -782,7 +890,6 @@ fun DrinkItemSkeleton() {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Tag skeletons
                     repeat(2) {
                         Box(
                             modifier = Modifier
@@ -800,75 +907,73 @@ fun DrinkItemSkeleton() {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DailyLimitHero(todaysCaffeineIntake: Int = 0) {
+fun DailyLimitHero(todaysCaffeineIntake: Int) {
     val dailyLimit = 400
     val progress = (todaysCaffeineIntake.toFloat() / dailyLimit).coerceIn(0f, 1f)
-    val actualPercentage = (todaysCaffeineIntake.toFloat() / dailyLimit * 100).roundToInt()
+    val actualPercentage = (progress * 100).toInt()
     val isOverLimit = todaysCaffeineIntake > dailyLimit
 
     var isPressed by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(200)
+        delay(100)
         isVisible = true
     }
 
     val scale by animateFloatAsState(
         targetValue = when {
-            !isVisible -> 0.95f
-            isPressed -> 0.98f
-            else -> 1f
+            isPressed -> 0.95f
+            isVisible -> 1f
+            else -> 0.9f
         },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessHigh
         ),
         label = "scale"
     )
 
     val cardAlpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(600),
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "cardAlpha"
     )
 
     val elevation by animateDpAsState(
         targetValue = if (isPressed) 2.dp else 6.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = tween(150),
         label = "elevation"
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val infiniteTransition = rememberInfiniteTransition(label = "dailyLimit")
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
+        initialValue = 0.4f,
+        targetValue = 0.8f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
+            animation = tween(1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "alpha"
+        label = "pulseAlpha"
     )
 
     val iconRotation by infiniteTransition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
+        initialValue = -8f,
+        targetValue = 8f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = EaseInOutCubic),
+            animation = tween(2500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "iconRotation"
     )
 
     val iconScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.1f,
+        initialValue = 0.92f,
+        targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = EaseInOutCubic),
+            animation = tween(2000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "iconScale"
@@ -1076,20 +1181,68 @@ fun ExpressiveTopBar(scrollBehavior: TopAppBarScrollBehavior, navController: Nav
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DrinkHistoryItem(drink: Drink, onClick: () -> Unit = {}) {
     val timeText = formatTimeAgo(drink.consumedDate)
+    var isPressed by remember { mutableStateOf(false) }
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(50)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.95f
+            isVisible -> 1f
+            else -> 0.9f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "scale"
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label = "alpha"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 1.dp else 3.dp,
+        animationSpec = tween(100),
+        label = "elevation"
+    )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        onClick = onClick
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .alpha(alpha)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { onClick() }
+                )
+            },
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 if (drink.imageUrl.isNotEmpty()) {
@@ -1100,28 +1253,43 @@ fun DrinkHistoryItem(drink: Drink, onClick: () -> Unit = {}) {
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Icon(Icons.Rounded.LocalDrink, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Rounded.LocalDrink,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     drink.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(Modifier.height(2.dp))
                 Text(
                     "${drink.category} • ${drink.caffeineContent}mg",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    timeText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        timeText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
                 if (drink.isFavorite) {
                     Icon(
                         Icons.Rounded.Favorite,
@@ -1170,34 +1338,199 @@ fun HistoryItemExpressive(data: HistoryData) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ExpressiveFAB(onClick: () -> Unit) {
+    var isPressed by remember { mutableStateOf(false) }
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(200)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.88f
+            isVisible -> 1f
+            else -> 0.7f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "fabScale"
+    )
+
+    val rotation by animateFloatAsState(
+        targetValue = if (isPressed) 45f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "fabRotation"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 3.dp else 6.dp,
+        animationSpec = tween(100),
+        label = "fabElevation"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "fab")
+    val iconPulse by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconPulse"
+    )
+
     MediumFloatingActionButton(
-        onClick = onClick,
+        onClick = {
+            isPressed = true
+            onClick()
+        },
         containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .scale(scale)
+            .graphicsLayer { rotationZ = rotation },
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = elevation,
+            pressedElevation = 3.dp
+        )
     ) {
-        Icon(Icons.Rounded.Add, null, modifier = Modifier.size(32.dp))
+        Icon(
+            Icons.Rounded.Add,
+            contentDescription = "Add drink",
+            modifier = Modifier
+                .size(32.dp)
+                .scale(iconPulse)
+        )
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(150)
+            isPressed = false
+        }
     }
 }
 
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ExpressiveNavBar(navController: NavHostController) {
-    NavigationBar {
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = currentBackStackEntry?.destination?.route
+
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        val homeScale by animateFloatAsState(
+            targetValue = if (currentDestination == "home") 1.08f else 1f,
+            animationSpec = tween(100, easing = FastOutSlowInEasing),
+            label = "homeScale"
+        )
+
+        val homeAlpha by animateFloatAsState(
+            targetValue = if (currentDestination == "home") 1f else 0.7f,
+            animationSpec = tween(100),
+            label = "homeAlpha"
+        )
+
         NavigationBarItem(
-            selected = true,
-            onClick = { navController.navigate("home") },
-            icon = { Icon(Icons.Rounded.Home, null) },
-            label = { Text("Home") })
+            selected = currentDestination == "home",
+            onClick = {
+                if (currentDestination != "home") {
+                    navController.navigate("home") {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            },
+            icon = {
+                Icon(
+                    imageVector = if (currentDestination == "home") Icons.Rounded.Home else Icons.Outlined.Home,
+                    contentDescription = "Home",
+                    modifier = Modifier
+                        .scale(homeScale)
+                        .alpha(homeAlpha)
+                )
+            },
+            label = {
+                Text(
+                    "Home",
+                    modifier = Modifier.alpha(homeAlpha)
+                )
+            }
+        )
+
+        val galleryScale by animateFloatAsState(
+            targetValue = if (currentDestination == "gallery") 1.08f else 1f,
+            animationSpec = tween(100, easing = FastOutSlowInEasing),
+            label = "galleryScale"
+        )
+
+        val galleryAlpha by animateFloatAsState(
+            targetValue = if (currentDestination == "gallery") 1f else 0.7f,
+            animationSpec = tween(100),
+            label = "galleryAlpha"
+        )
+
+        NavigationBarItem(
+            selected = currentDestination == "gallery",
+            onClick = {
+                if (currentDestination != "gallery") {
+                    navController.navigate("gallery") {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            },
+            icon = {
+                Icon(
+                    imageVector = if (currentDestination == "gallery") Icons.Rounded.PhotoLibrary else Icons.Outlined.PhotoLibrary,
+                    contentDescription = "Gallery",
+                    modifier = Modifier
+                        .scale(galleryScale)
+                        .alpha(galleryAlpha)
+                )
+            },
+            label = {
+                Text(
+                    "Gallery",
+                    modifier = Modifier.alpha(galleryAlpha)
+                )
+            }
+        )
+
         NavigationBarItem(
             selected = false,
             onClick = {},
-            icon = { Icon(Icons.Outlined.PhotoLibrary, null) },
-            label = { Text("Gallery") })
-        NavigationBarItem(
-            selected = false,
-            onClick = {},
-            icon = { Icon(Icons.Outlined.BarChart, null) },
-            label = { Text("Stats") })
+            enabled = false,
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.BarChart,
+                    contentDescription = "Stats",
+                    modifier = Modifier.alpha(0.4f)
+                )
+            },
+            label = {
+                Text(
+                    "Stats",
+                    modifier = Modifier.alpha(0.4f)
+                )
+            }
+        )
     }
 }
 
