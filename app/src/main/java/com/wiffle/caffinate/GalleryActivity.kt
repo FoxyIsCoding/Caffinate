@@ -23,6 +23,7 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.wiffle.caffinate.data.Drink
 import com.wiffle.caffinate.data.DrinkViewModel
+import kotlin.collections.emptyList
 
 @Composable
 fun GalleryScreen(

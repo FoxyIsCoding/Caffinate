@@ -34,6 +34,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -111,89 +112,121 @@ fun CanDetailsScreen(
                     },
                     actions = {
                         Box {
-                            IconButton(onClick = { showMenu = true }) {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(48.dp)
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More"
+                                    contentDescription = "More options",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             DropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
                                 modifier = Modifier
-                                    .width(200.dp)
+                                    .width(220.dp)
                                     .background(
-                                        MaterialTheme.colorScheme.surfaceContainer,
-                                        RoundedCornerShape(16.dp)
+                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        RoundedCornerShape(12.dp)
                                     ),
-                                shape = RoundedCornerShape(16.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                offset = DpOffset((-8).dp, 8.dp),
+                                shadowElevation = 8.dp,
+                                tonalElevation = 3.dp
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Surface(
-                                        onClick = {
-                                            showMenu = false
-                                            showEditScreen = true
-                                        },
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
+                                // Edit Menu Item
+                                DropdownMenuItem(
+                                    text = {
                                         Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Icon(
-                                                Icons.Rounded.Edit,
+                                                imageVector = Icons.Rounded.Edit,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(20.dp),
-                                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                modifier = Modifier.size(24.dp),
+                                                tint = MaterialTheme.colorScheme.onSurface
                                             )
-                                            Text(
-                                                "Edit",
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                                            )
+                                            Column {
+                                                Text(
+                                                    text = "Edit",
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = "Modify drink details",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
-                                    }
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showEditScreen = true
+                                    },
+                                    leadingIcon = null,
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.onSurface,
+                                        leadingIconColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
 
-                                    Surface(
-                                        onClick = {
-                                            showMenu = false
-                                            showDeleteDialog = true
-                                        },
-                                        color = MaterialTheme.colorScheme.errorContainer,
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+
+                                // Delete Menu Item
+                                DropdownMenuItem(
+                                    text = {
                                         Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Icon(
-                                                Icons.Rounded.Delete,
+                                                imageVector = Icons.Rounded.Delete,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(20.dp),
-                                                tint = MaterialTheme.colorScheme.onErrorContainer
+                                                modifier = Modifier.size(24.dp),
+                                                tint = MaterialTheme.colorScheme.error
                                             )
-                                            Text(
-                                                "Delete",
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
+                                            Column {
+                                                Text(
+                                                    text = "Delete",
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                                Text(
+                                                    text = "Remove permanently",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                                )
+                                            }
                                         }
-                                    }
-                                }
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteDialog = true
+                                    },
+                                    leadingIcon = null,
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.error,
+                                        leadingIconColor = MaterialTheme.colorScheme.error
+                                    )
+                                )
                             }
                         }
                     },

@@ -97,7 +97,7 @@ fun MainAppWithNavigation(navController: NavHostController) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = currentBackStackEntry?.destination?.route
 
-    val navbarRoutes = listOf("home", "gallery")
+    val navbarRoutes = listOf("home", "gallery", "stats")
     val showNavbar = currentDestination in navbarRoutes
 
     val homeViewModel: DrinkViewModel = viewModel()
@@ -455,6 +455,58 @@ fun MainAppWithNavigation(navController: NavHostController) {
                 }
             ) {
                 BackupManagementScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(
+                "stats",
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + fadeIn(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + scaleIn(
+                        initialScale = 0.9f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.95f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                        initialOffset = { (it * 0.1f).toInt() }
+                    ) + fadeIn(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing),
+                        initialAlpha = 0.5f
+                    ) + scaleIn(
+                        initialScale = 0.95f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + fadeOut(
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) + scaleOut(
+                        targetScale = 0.9f,
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) {
+                StatsScreen(onBackClick = { navController.popBackStack() })
             }
         }
 
@@ -1514,21 +1566,26 @@ fun ExpressiveNavBar(navController: NavHostController) {
         )
 
         NavigationBarItem(
-            selected = false,
-            onClick = {},
-            enabled = false,
+            selected = currentDestination == "stats",
+            onClick = {
+                if (currentDestination != "stats") {
+                    navController.navigate("stats") {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            },
             icon = {
                 Icon(
-                    imageVector = Icons.Outlined.BarChart,
-                    contentDescription = "Stats",
-                    modifier = Modifier.alpha(0.4f)
+                    imageVector = if (currentDestination == "stats") Icons.Rounded.BarChart else Icons.Outlined.BarChart,
+                    contentDescription = "Stats"
                 )
             },
             label = {
-                Text(
-                    "Stats",
-                    modifier = Modifier.alpha(0.4f)
-                )
+                Text("Stats")
             }
         )
     }
