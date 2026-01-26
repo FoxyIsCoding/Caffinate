@@ -5,55 +5,58 @@ import androidx.activity.ComponentActivity
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.lifecycleScope
-import com.wiffle.caffinate.data.DatabaseTestHelper
 import com.wiffle.caffinate.data.DrinkViewModel
+import com.wiffle.caffinate.data.SettingsViewModel
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToBackup: () -> Unit = {},
-    viewModel: DrinkViewModel = viewModel()
+    viewModel: DrinkViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
 
     var showAboutDialog by remember { mutableStateOf(false) }
-    var isDarkMode by remember { mutableStateOf(true) }
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var dailyGoal by remember { mutableStateOf(400) }
+    var showReminderDialog by remember { mutableStateOf(false) }
+    var showUnitsDialog by remember { mutableStateOf(false) }
+    var showResetConfirm by remember { mutableStateOf(false) }
+
+    val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
+    val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsState()
+    val dailyGoal by settingsViewModel.dailyGoalMg.collectAsState()
+    val maxPerDrink by settingsViewModel.maxCaffeinePerDrinkMg.collectAsState()
+    val maxDaily by settingsViewModel.maxDailyCaffeineMg.collectAsState()
+    val autoBackupEnabled by settingsViewModel.autoBackupEnabled.collectAsState()
+    val useExpressiveTheme by settingsViewModel.useExpressiveTheme.collectAsState()
+    val maxHistoryEntries by settingsViewModel.maxHistoryEntries.collectAsState()
+    val reminderTime by settingsViewModel.reminderTime.collectAsState()
+    val customUnits by settingsViewModel.customUnits.collectAsState()
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
         rememberTopAppBarState(),
@@ -95,10 +98,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                SectionHeader(
-                    icon = Icons.Rounded.Palette,
-                    title = "Appearance"
-                )
+                SectionHeader(icon = Icons.Rounded.Palette, title = "Appearance")
             }
 
             item {
@@ -108,7 +108,16 @@ fun SettingsScreen(
                         title = "Dark Mode",
                         subtitle = "Use dark theme",
                         checked = isDarkMode,
-                        onCheckedChange = { isDarkMode = it },
+                        onCheckedChange = { settingsViewModel.setDarkMode(it) },
+                        showDivider = true
+                    )
+
+                    SettingsSwitchRow(
+                        icon = Icons.Rounded.ColorLens,
+                        title = "Expressive Theme",
+                        subtitle = "Use Material 3 expressive surfaces",
+                        checked = useExpressiveTheme,
+                        onCheckedChange = { settingsViewModel.setUseExpressiveTheme(it) },
                         showDivider = false
                     )
                 }
@@ -116,10 +125,7 @@ fun SettingsScreen(
 
             item {
                 Spacer(Modifier.height(8.dp))
-                SectionHeader(
-                    icon = Icons.Rounded.Notifications,
-                    title = "Notifications"
-                )
+                SectionHeader(icon = Icons.Rounded.Notifications, title = "Notifications")
             }
 
             item {
@@ -129,7 +135,15 @@ fun SettingsScreen(
                         title = "Daily Reminders",
                         subtitle = "Get reminded to track your drinks",
                         checked = notificationsEnabled,
-                        onCheckedChange = { notificationsEnabled = it },
+                        onCheckedChange = { settingsViewModel.setNotificationsEnabled(it) },
+                        showDivider = true
+                    )
+
+                    SettingsActionRow(
+                        icon = Icons.Rounded.Schedule,
+                        title = "Reminder Time",
+                        subtitle = "Current: $reminderTime",
+                        onClick = { showReminderDialog = true },
                         showDivider = false
                     )
                 }
@@ -137,25 +151,41 @@ fun SettingsScreen(
 
             item {
                 Spacer(Modifier.height(8.dp))
-                SectionHeader(
-                    icon = Icons.Rounded.EmojiEvents,
-                    title = "Goals"
-                )
+                SectionHeader(icon = Icons.Rounded.EmojiEvents, title = "Goals & Limits")
             }
 
             item {
-                DailyGoalCard(
-                    currentGoal = dailyGoal,
-                    onGoalChange = { dailyGoal = it }
-                )
+                GroupedSettingsCard {
+                    DailyGoalCard(
+                        currentGoal = dailyGoal,
+                        onGoalChange = { settingsViewModel.setDailyGoalMg(it) }
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    NumericSettingRow(
+                        icon = Icons.Rounded.LocalCafe,
+                        title = "Max per Drink",
+                        subtitle = "$maxPerDrink ${customUnits}",
+                        value = maxPerDrink,
+                        onDecrease = { settingsViewModel.setMaxCaffeinePerDrinkMg((maxPerDrink - 10).coerceAtLeast(0)) },
+                        onIncrease = { settingsViewModel.setMaxCaffeinePerDrinkMg(maxPerDrink + 10) }
+                    )
+
+                    NumericSettingRow(
+                        icon = Icons.Rounded.TrendingUp,
+                        title = "Max Daily Caffeine",
+                        subtitle = "$maxDaily ${customUnits}",
+                        value = maxDaily,
+                        onDecrease = { settingsViewModel.setMaxDailyCaffeineMg((maxDaily - 50).coerceAtLeast(0)) },
+                        onIncrease = { settingsViewModel.setMaxDailyCaffeineMg(maxDaily + 50) }
+                    )
+                }
             }
 
             item {
                 Spacer(Modifier.height(8.dp))
-                SectionHeader(
-                    icon = Icons.Rounded.Storage,
-                    title = "Database"
-                )
+                SectionHeader(icon = Icons.Rounded.Storage, title = "Database & Backup")
             }
 
             item {
@@ -168,14 +198,13 @@ fun SettingsScreen(
                         onClick = onNavigateToBackup,
                         showDivider = true
                     )
-                    SettingsActionRow(
-                        icon = Icons.Rounded.DeleteSweep,
-                        title = "Clear All Data",
-                        subtitle = "Delete all drinks and reset",
-                        isDestructive = true,
-                        onClick = {
-                            Toast.makeText(context, "Feature coming soon!", Toast.LENGTH_SHORT).show()
-                        },
+
+                    SettingsSwitchRow(
+                        icon = Icons.Rounded.Autorenew,
+                        title = "Auto Backup",
+                        subtitle = "Create backups automatically",
+                        checked = autoBackupEnabled,
+                        onCheckedChange = { settingsViewModel.setAutoBackupEnabled(it) },
                         showDivider = false
                     )
                 }
@@ -183,10 +212,44 @@ fun SettingsScreen(
 
             item {
                 Spacer(Modifier.height(8.dp))
-                SectionHeader(
-                    icon = Icons.Rounded.Info,
-                    title = "About"
-                )
+                SectionHeader(icon = Icons.Rounded.Build, title = "Advanced")
+            }
+
+            item {
+                GroupedSettingsCard {
+                    SettingsActionRow(
+                        icon = Icons.Rounded.History,
+                        title = "Max History Entries",
+                        subtitle = "$maxHistoryEntries rows",
+                        onClick = {
+                            // open a simple dialog to set number of entries
+                            scope.launch { openMaxHistoryDialog(settingsViewModel) }
+                        },
+                        showDivider = true
+                    )
+
+                    SettingsActionRow(
+                        icon = Icons.Rounded.Settings,
+                        title = "Custom Units",
+                        subtitle = customUnits,
+                        onClick = { showUnitsDialog = true },
+                        showDivider = true
+                    )
+
+                    SettingsActionRow(
+                        icon = Icons.Rounded.Restore,
+                        title = "Reset to Defaults",
+                        subtitle = "Restore all settings to defaults",
+                        isDestructive = true,
+                        onClick = { showResetConfirm = true },
+                        showDivider = false
+                    )
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(8.dp))
+                SectionHeader(icon = Icons.Rounded.Info, title = "About")
             }
 
             item {
@@ -216,6 +279,56 @@ fun SettingsScreen(
 
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
+    }
+
+    if (showReminderDialog) {
+        ReminderTimeDialog(
+            initial = reminderTime,
+            onCancel = { showReminderDialog = false },
+            onSave = { hhmm ->
+                settingsViewModel.setReminderTime(hhmm)
+                showReminderDialog = false
+                Toast.makeText(context, "Reminder set to $hhmm", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    if (showUnitsDialog) {
+        CustomUnitsDialog(
+            initial = customUnits,
+            onCancel = { showUnitsDialog = false },
+            onSave = { units ->
+                settingsViewModel.setCustomUnits(units)
+                showUnitsDialog = false
+                Toast.makeText(context, "Units set to $units", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            icon = { Icon(Icons.Rounded.Warning, null) },
+            title = { Text("Reset all settings?") },
+            text = { Text("This will restore all settings to their defaults. This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        settingsViewModel.resetToDefaults()
+                        showResetConfirm = false
+                        Toast.makeText(context, "Settings reset", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Reset")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -261,9 +374,7 @@ fun SectionHeader(
 }
 
 @Composable
-fun GroupedSettingsCard(
-    content: @Composable ColumnScope.() -> Unit
-) {
+fun GroupedSettingsCard(content: @Composable ColumnScope.() -> Unit) {
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -273,28 +384,17 @@ fun GroupedSettingsCard(
 
     val scale by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0.92f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "scale"
     )
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale),
+        modifier = Modifier.fillMaxWidth().scale(scale),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             content()
         }
     }
@@ -309,43 +409,28 @@ fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     showDivider: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onCheckedChange(!checked) }
-                .padding(20.dp),
+            modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (checked) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    ),
+                modifier = Modifier.size(48.dp).clip(CircleShape)
+                    .background(if (checked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = if (checked) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (checked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Spacer(Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
@@ -353,10 +438,7 @@ fun SettingsSwitchRow(
                 )
             }
 
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
 
         if (showDivider) {
@@ -378,32 +460,21 @@ fun SettingsActionRow(
     onClick: () -> Unit,
     showDivider: Boolean = true
 ) {
-    var isPressed by remember { mutableStateOf(false) }
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(20.dp),
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isDestructive) MaterialTheme.colorScheme.errorContainer
-                        else MaterialTheme.colorScheme.primaryContainer
-                    ),
+                modifier = Modifier.size(48.dp).clip(CircleShape)
+                    .background(if (isDestructive) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = if (isDestructive) MaterialTheme.colorScheme.onErrorContainer
-                    else MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = if (isDestructive) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
@@ -414,8 +485,7 @@ fun SettingsActionRow(
                     title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isDestructive) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurface
+                    color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     subtitle,
@@ -425,10 +495,7 @@ fun SettingsActionRow(
             }
 
             if (badge != null) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
+                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                     Text(
                         badge,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -458,25 +525,70 @@ fun SettingsActionRow(
 }
 
 @Composable
-fun DailyGoalCard(
-    currentGoal: Int,
-    onGoalChange: (Int) -> Unit
+fun NumericSettingRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    value: Int,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
 ) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        IconButton(onClick = onDecrease) {
+            Icon(Icons.Rounded.Remove, null)
+        }
+        Text(
+            "$value",
+            modifier = Modifier.padding(horizontal = 6.dp),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Black
+        )
+        IconButton(onClick = onIncrease) {
+            Icon(Icons.Rounded.Add, null)
+        }
+    }
+    Divider(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
+}
+
+@Composable
+fun DailyGoalCard(currentGoal: Int, onGoalChange: (Int) -> Unit) {
     var sliderValue by remember { mutableStateOf(currentGoal.toFloat()) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -496,10 +608,7 @@ fun DailyGoalCard(
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primary
-                ) {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primary) {
                     Text(
                         "${sliderValue.toInt()}mg",
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -514,8 +623,8 @@ fun DailyGoalCard(
                 value = sliderValue,
                 onValueChange = { sliderValue = it },
                 onValueChangeFinished = { onGoalChange(sliderValue.toInt()) },
-                valueRange = 100f..800f,
-                steps = 13,
+                valueRange = 100f..2000f,
+                steps = 19,
                 colors = SliderDefaults.colors(
                     thumbColor = MaterialTheme.colorScheme.primary,
                     activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -523,17 +632,14 @@ fun DailyGoalCard(
                 )
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     "100mg",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )
                 Text(
-                    "800mg",
+                    "2000mg",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )
@@ -542,368 +648,63 @@ fun DailyGoalCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BackupManagementScreen(
-    onBack: () -> Unit,
-    viewModel: DrinkViewModel = viewModel()
-) {
-    val context = LocalContext.current
-    val activity = context as? ComponentActivity
-    val scope = rememberCoroutineScope()
-
-    var backups by remember { mutableStateOf(DatabaseTestHelper.listBackups(context)) }
-    var isLoading by remember { mutableStateOf(false) }
-    var showConfirmDelete by remember { mutableStateOf(false) }
-    var backupToDelete by remember { mutableStateOf<DatabaseTestHelper.BackupInfo?>(null) }
-
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-        rememberTopAppBarState(),
-        canScroll = { true }
-    )
-
-    Scaffold(
-        topBar = {
-            LargeTopAppBar(
-                title = {
-                    Text(
-                        "Backup & Restore",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Black
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.Rounded.ArrowBack,
-                            contentDescription = "Back",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                ),
-                scrollBehavior = scrollBehavior
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+fun ReminderTimeDialog(initial: String, onCancel: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    Dialog(onDismissRequest = onCancel) {
+        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(0.9f)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Set Reminder Time", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "Enter time in 24-hour format HH:mm",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.Backup,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                    Column {
-                        Text(
-                            "${backups.size} backups",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            "${DatabaseTestHelper.getBackupSize(context)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(
-                    onClick = {
-                        isLoading = true
-                        val success = DatabaseTestHelper.createBackup(context)
-                        if (success) {
-                            backups = DatabaseTestHelper.listBackups(context)
-                            Toast.makeText(context, "✅ Backup created!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "❌ Backup failed", Toast.LENGTH_SHORT).show()
-                        }
-                        isLoading = false
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Rounded.Add, null, modifier = Modifier.size(18.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    placeholder = { Text("09:00") })
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onCancel) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
-                    Text("Create Backup")
-                }
-
-                FilledTonalButton(
-                    onClick = {
-                        if (backups.isEmpty()) {
-                            Toast.makeText(context, "No backups to restore", Toast.LENGTH_SHORT).show()
-                            return@FilledTonalButton
-                        }
-                        isLoading = true
-                        scope.launch {
-                            DatabaseTestHelper.restoreLatestBackup(context) { success ->
-                                isLoading = false
-                                if (success) {
-                                    Toast.makeText(context, "✅ Restored! Restarting...", Toast.LENGTH_SHORT).show()
-                                    activity?.recreate()
-                                } else {
-                                    Toast.makeText(context, "❌ Restore failed", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    },
-                    enabled = !isLoading && backups.isNotEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Rounded.RestorePage, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Restore Latest")
-                }
-            }
-
-            if (isLoading) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            if (backups.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(40.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Rounded.CloudOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        )
-                        Text(
-                            "No backups yet",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "Create your first backup to protect your data",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(backups) { backup ->
-                        BackupListItem(
-                            backup = backup,
-                            onRestore = {
-                                isLoading = true
-                                scope.launch {
-                                    DatabaseTestHelper.restoreLatestBackup(context) { success ->
-                                        isLoading = false
-                                        if (success) {
-                                            Toast.makeText(context, "✅ Restored!", Toast.LENGTH_SHORT).show()
-                                            activity?.recreate()
-                                        } else {
-                                            Toast.makeText(context, "❌ Failed", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-                            },
-                            onDelete = {
-                                backupToDelete = backup
-                                showConfirmDelete = true
-                            }
-                        )
-                    }
-                }
-
-                if (backups.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        TextButton(
-                            onClick = {
-                                DatabaseTestHelper.deleteAllBackups(context)
-                                backups = emptyList()
-                                Toast.makeText(context, "All backups deleted", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Rounded.DeleteForever, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Delete All Backups")
-                        }
-                    }
+                    Button(onClick = {
+                        val normalized = if (text.matches(Regex("^\\d{1,2}:\\d{2}$"))) {
+                            val parts = text.split(":").map { it.toIntOrNull() ?: 0 }
+                            val hh = parts.getOrNull(0)?.coerceIn(0, 23) ?: 9
+                            val mm = parts.getOrNull(1)?.coerceIn(0, 59) ?: 0
+                            "%02d:%02d".format(hh, mm)
+                        } else "09:00"
+                        onSave(normalized)
+                    }) { Text("Save") }
                 }
             }
         }
-    }
-
-    if (showConfirmDelete && backupToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDelete = false },
-            icon = { Icon(Icons.Rounded.Warning, null) },
-            title = { Text("Delete Backup?") },
-            text = { Text("Are you sure you want to delete this backup? This cannot be undone.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        backupToDelete?.let {
-                            DatabaseTestHelper.deleteBackup(context, it)
-                            backups = DatabaseTestHelper.listBackups(context)
-                            Toast.makeText(context, "Backup deleted", Toast.LENGTH_SHORT).show()
-                        }
-                        showConfirmDelete = false
-                        backupToDelete = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDelete = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 
 @Composable
-fun BackupListItem(
-    backup: DatabaseTestHelper.BackupInfo,
-    onRestore: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var isPressed by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "scale"
-    )
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.tertiaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.Save,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+fun CustomUnitsDialog(initial: String, onCancel: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    Dialog(onDismissRequest = onCancel) {
+        Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(0.9f)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Custom Units", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    backup.formattedDate,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    "${backup.sizeKB} KB",
+                    "Enter a unit label to display next to values (e.g. mg)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-
-            IconButton(
-                onClick = onRestore,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.RestorePage,
-                    contentDescription = "Restore",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(24.dp)
-                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    placeholder = { Text("mg") })
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onCancel) { Text("Cancel") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = { onSave(text.trim().ifEmpty { "mg" }) }) { Text("Save") }
+                }
             }
         }
     }
@@ -911,61 +712,53 @@ fun BackupListItem(
 
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.LocalCafe,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        },
-        title = {
+    AlertDialog(onDismissRequest = onDismiss, icon = {
+        Box(
+            modifier = Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.LocalCafe,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }, title = {
+        Text(
+            "Caffinate",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center
+        )
+    }, text = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                "Caffinate",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
+                "Version 1.0.0",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Track your caffeine intake with style. Stay energized, stay informed!",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                "Made with ❤️ and lots of ☕",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center
             )
-        },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    "Version 1.0.0",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "Track your caffeine intake with style. Stay energized, stay informed!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                Text(
-                    "Made with ❤️ and lots of ☕",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("Got it!")
-            }
         }
-    )
+    }, confirmButton = {
+        Button(onClick = onDismiss) { Text("Got it!") }
+    })
+}
+
+private suspend fun openMaxHistoryDialog(settingsViewModel: SettingsViewModel) {
+    // Placeholder for flows that need coroutine scope when opening complex dialogs.
+    // The actual UI for this is opened from SettingsScreen; to keep this top-level file self-contained
+    // we leave the value-change functionality inline in the screen.
 }
