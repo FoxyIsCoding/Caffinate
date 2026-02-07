@@ -33,7 +33,7 @@ fun BackupManagementScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Local state for list of backups and UI flags
+    
     var backups by remember { mutableStateOf(context.getBackupFiles()) }
     var totalSize by remember { mutableStateOf(context.getBackupSize()) }
     var showConfirmDeleteAll by remember { mutableStateOf(false) }
@@ -55,10 +55,10 @@ fun BackupManagementScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    // Quick actions in top bar
+                    
                     IconButton(
                         onClick = {
-                            // Create a backup
+                            
                             isPerformingOperation = true
                             val success = context.backupDatabase()
                             isPerformingOperation = false
@@ -133,7 +133,7 @@ fun BackupManagementScreen(onBack: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                // Create a backup
+                                
                                 isPerformingOperation = true
                                 val success = context.backupDatabase()
                                 isPerformingOperation = false
@@ -185,9 +185,9 @@ fun BackupManagementScreen(onBack: () -> Unit) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     TextButton(
                                         onClick = {
-                                            // Delete this backup
+                                            
                                             val deleted = try {
-                                                // deleteBackup is defined as a Context extension in the project
+                                                
                                                 context.deleteBackup(index)
                                             } catch (e: Exception) {
                                                 false
@@ -214,7 +214,7 @@ fun BackupManagementScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(8.dp))
 
-            // Footer actions
+            
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { refresh() },
@@ -240,7 +240,7 @@ fun BackupManagementScreen(onBack: () -> Unit) {
         }
     }
 
-    // Confirm delete all dialog
+    
     if (showConfirmDeleteAll) {
         AlertDialog(
             onDismissRequest = { showConfirmDeleteAll = false },
@@ -270,7 +270,7 @@ fun BackupManagementScreen(onBack: () -> Unit) {
         )
     }
 
-    // Confirm restore latest dialog
+    
     if (showConfirmRestoreLatest) {
         AlertDialog(
             onDismissRequest = { showConfirmRestoreLatest = false },
@@ -281,7 +281,7 @@ fun BackupManagementScreen(onBack: () -> Unit) {
                     showConfirmRestoreLatest = false
                     isPerformingOperation = true
                     scope.launch {
-                        // restoreDatabase is a suspend extension defined in the project; it calls back with success boolean.
+                        
                         scope.restoreDatabase(context) { success ->
                             isPerformingOperation = false
                             if (success) {
@@ -290,10 +290,10 @@ fun BackupManagementScreen(onBack: () -> Unit) {
                                     "Restore successful. Please restart the app.",
                                     Toast.LENGTH_LONG
                                 ).show()
-                                // If running in an Activity we can ask it to recreate() to pick up restored DB,
-                                // but that may not always be desired (leave it to the user).
+                                
+                                
                                 (context as? ComponentActivity)?.let { activity ->
-                                    // do not call recreate automatically; just inform user
+                                    
                                 }
                                 refresh()
                             } else {

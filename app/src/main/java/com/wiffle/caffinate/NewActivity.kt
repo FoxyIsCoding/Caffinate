@@ -40,6 +40,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.wiffle.caffinate.data.Drink
 import com.wiffle.caffinate.data.DrinkViewModel
+import com.wiffle.caffinate.data.SettingsViewModel
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -145,6 +146,39 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
             )
         },
         floatingActionButton = {
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val maxPerDrink by settingsViewModel.maxCaffeinePerDrinkMg.collectAsState()
+            val dailyGoal by settingsViewModel.dailyGoalMg.collectAsState()
+            val todaysIntake by viewModel.todaysCaffeineIntake.collectAsState()
+            var showConfirmDaily by remember { mutableStateOf(false) }
+            var showPerDrinkBlocked by remember { mutableStateOf(false) }
+            var pendingCaffeine by remember { mutableStateOf(0) }
+
+            fun performSave() {
+                val newDrink = Drink(
+                    name = drinkName,
+                    brand = brand,
+                    category = selectedCategory,
+                    caffeineContent = caffeineContent.toIntOrNull() ?: 0,
+                    sugarContent = sugarContent.toIntOrNull() ?: 0,
+                    size = size,
+                    sizeInMl = 473,
+                    location = location,
+                    rating = rating,
+                    imageUrl = imageUrl,
+                    consumedDate = System.currentTimeMillis(),
+                    notes = notes,
+                    tags = selectedTags.toList(),
+                    isFavorite = false,
+                    calories = calories.toIntOrNull() ?: 0,
+                    timesConsumed = 1
+                )
+                scope.launch {
+                    viewModel.insertDrink(newDrink)
+                    onClose()
+                }
+            }
+
             ExtendedFloatingActionButton(
                 onClick = {
                     if (drinkName.isBlank()) {
@@ -154,27 +188,22 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                         return@ExtendedFloatingActionButton
                     }
 
-                    val newDrink = Drink(
-                        name = drinkName,
-                        brand = brand,
-                        category = selectedCategory,
-                        caffeineContent = caffeineContent.toIntOrNull() ?: 0,
-                        sugarContent = sugarContent.toIntOrNull() ?: 0,
-                        size = size,
-                        sizeInMl = 473,
-                        location = location,
-                        rating = rating,
-                        imageUrl = imageUrl,
-                        consumedDate = System.currentTimeMillis(),
-                        notes = notes,
-                        tags = selectedTags.toList(),
-                        isFavorite = false,
-                        calories = calories.toIntOrNull() ?: 0,
-                        timesConsumed = 1
-                    )
+                    val caffeineVal = caffeineContent.toIntOrNull() ?: 0
 
-                    viewModel.insertDrink(newDrink)
-                    onClose()
+                    if (caffeineVal > maxPerDrink) {
+                        pendingCaffeine = caffeineVal
+                        showPerDrinkBlocked = true
+                        return@ExtendedFloatingActionButton
+                    }
+
+                    val projected = (todaysIntake ?: 0) + caffeineVal
+                    if (projected > dailyGoal) {
+                        pendingCaffeine = caffeineVal
+                        showConfirmDaily = true
+                        return@ExtendedFloatingActionButton
+                    }
+
+                    performSave()
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -182,6 +211,38 @@ fun NewCanScreen(onClose: () -> Unit, viewModel: DrinkViewModel = viewModel()) {
                 icon = { Icon(Icons.Default.Save, null) },
                 text = { Text("Save Can") }
             )
+
+            if (showPerDrinkBlocked) {
+                AlertDialog(
+                    onDismissRequest = { showPerDrinkBlocked = false },
+                    title = { Text("Cannot save") },
+                    text = { Text("This drink's caffeine ($pendingCaffeine mg) exceeds the per-drink limit of $maxPerDrink mg.") },
+                    confirmButton = {
+                        TextButton(onClick = { showPerDrinkBlocked = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
+
+            if (showConfirmDaily) {
+                AlertDialog(
+                    onDismissRequest = { showConfirmDaily = false },
+                    title = { Text("Exceeds daily limit") },
+                    text = {
+                        Text("Adding this drink ($pendingCaffeine mg) would exceed your daily goal of $dailyGoal mg (current ${todaysIntake ?: 0} mg). Proceed?")
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showConfirmDaily = false
+                            performSave()
+                        }) { Text("Proceed") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showConfirmDaily = false }) { Text("Cancel") }
+                    }
+                )
+            }
         }
     ) { padding ->
         Column(

@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.wiffle.caffinate.data.Drink
 import com.wiffle.caffinate.data.DrinkViewModel
+import com.wiffle.caffinate.data.SettingsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,12 +50,27 @@ class CanViewActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MonsterExpressiveTheme(darkTheme = true, dynamicColor = true) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    CanDetailsScreen()
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val isDark by settingsViewModel.isDarkMode.collectAsState()
+            val useExpressive by settingsViewModel.useExpressiveTheme.collectAsState()
+
+            if (useExpressive) {
+                MonsterExpressiveTheme(darkTheme = isDark, dynamicColor = true) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        CanDetailsScreen()
+                    }
+                }
+            } else {
+                MaterialTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        CanDetailsScreen()
+                    }
                 }
             }
         }
@@ -136,7 +152,7 @@ fun CanDetailsScreen(
                                 shadowElevation = 8.dp,
                                 tonalElevation = 3.dp
                             ) {
-                                // Edit Menu Item
+
                                 DropdownMenuItem(
                                     text = {
                                         Row(
@@ -185,7 +201,7 @@ fun CanDetailsScreen(
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 )
 
-                                // Delete Menu Item
+
                                 DropdownMenuItem(
                                     text = {
                                         Row(

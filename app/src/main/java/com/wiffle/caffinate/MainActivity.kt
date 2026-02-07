@@ -5,20 +5,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,23 +20,13 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
-
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -57,28 +40,29 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.wiffle.caffinate.data.Drink
 import com.wiffle.caffinate.data.DrinkViewModel
+import com.wiffle.caffinate.data.SettingsViewModel
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MonsterExpressiveTheme(darkTheme = true, dynamicColor = true) {
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val isDark by settingsViewModel.isDarkMode.collectAsState()
+            val useExpressive by settingsViewModel.useExpressiveTheme.collectAsState()
+            MonsterExpressiveTheme(darkTheme = isDark, dynamicColor = useExpressive) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -456,7 +440,6 @@ fun MainAppWithNavigation(navController: NavHostController) {
             ) {
                 BackupManagementScreen(onBack = { navController.popBackStack() })
             }
-
             composable(
                 "stats",
                 enterTransition = {
@@ -533,6 +516,7 @@ fun MonsterExpressiveTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    true
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
@@ -540,14 +524,14 @@ fun MonsterExpressiveTheme(
         }
 
         darkTheme -> darkColorScheme(
-            primary = Color(0xFF8CF79F),
-            background = Color(0xFF0A0C0A),
-            surface = Color(0xFF111411),
-            primaryContainer = Color(0xFF005227),
-            onPrimaryContainer = Color(0xFF8CF79F)
+            primary = Color(0xFFCFBBFE),
+            background = Color(0xFF2A282E),
+            surface = Color(0xFF3B2371),
+            primaryContainer = Color(0xFF503A8A),
+            onPrimaryContainer = Color(0xFFE9DCFF)
         )
 
-        else -> lightColorScheme(primary = Color(0xFF006D36))
+        else -> lightColorScheme(primary = Color(0xFF65568E))
     }
 
     MaterialTheme(
@@ -603,7 +587,9 @@ fun MonsterTrackerContent(
     ) {
         item {
             Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                DailyLimitHero(todaysCaffeineIntake)
+                val settingsViewModel: SettingsViewModel = viewModel()
+                val dailyGoal by settingsViewModel.dailyGoalMg.collectAsState()
+                DailyLimitHero(todaysCaffeineIntake, dailyGoal)
             }
         }
 
@@ -961,8 +947,7 @@ fun DrinkItemSkeleton() {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DailyLimitHero(todaysCaffeineIntake: Int) {
-    val dailyLimit = 400
+fun DailyLimitHero(todaysCaffeineIntake: Int, dailyLimit: Int = 400) {
     val progress = (todaysCaffeineIntake.toFloat() / dailyLimit).coerceIn(0f, 1f)
     val actualPercentage = (progress * 100).toInt()
     val isOverLimit = todaysCaffeineIntake > dailyLimit
@@ -1103,7 +1088,7 @@ fun DailyLimitHero(todaysCaffeineIntake: Int) {
                     )
                     Spacer(Modifier.height(10.dp))
                     LinearProgressIndicator(
-                        progress = { progress },
+                        progress = progress,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(14.dp)
@@ -1115,7 +1100,7 @@ fun DailyLimitHero(todaysCaffeineIntake: Int) {
                         trackColor = if (isOverLimit)
                             MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.3f)
                         else
-                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
                     )
                     Text(
                         if (isOverLimit)

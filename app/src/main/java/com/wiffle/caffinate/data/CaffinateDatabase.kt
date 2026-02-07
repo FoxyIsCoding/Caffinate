@@ -11,14 +11,15 @@ import kotlinx.coroutines.CoroutineScope
 
 
 @Database(
-    entities = [Drink::class],
-    version = 3,
+    entities = [Drink::class, SettingsEntity::class],
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class CaffinateDatabase : RoomDatabase() {
 
     abstract fun drinkDao(): DrinkDao
+    abstract fun settingsDao(): SettingsDao
 
     companion object {
         @Volatile
@@ -34,7 +35,7 @@ abstract class CaffinateDatabase : RoomDatabase() {
                     backupManager.createBackup()
                 }
 
-                val instance = Room.databaseBuilder(
+                val builder = Room.databaseBuilder(
                     context.applicationContext,
                     CaffinateDatabase::class.java,
                     "caffinate_database"
@@ -57,7 +58,17 @@ abstract class CaffinateDatabase : RoomDatabase() {
                             Log.d(TAG, "Database opened")
                         }
                     })
-                    .build()
+
+                val instance = try {
+                    builder.build()
+                } catch (e: IllegalStateException) {
+                    if (e.message?.contains("Room cannot verify the data integrity") == true || e.message?.contains("expected identity hash") == true) {
+                        dbFile.delete()
+                        builder.build()
+                    } else {
+                        throw e
+                    }
+                }
                 INSTANCE = instance
                 instance
             }

@@ -182,4 +182,41 @@ class DatabaseBackupManager(private val context: Context) {
             else -> "${bytes / (1024 * 1024)} MB"
         }
     }
+
+    fun exportDatabaseToExternal(): File? {
+        return try {
+            val dbFile = context.getDatabasePath(DATABASE_NAME)
+            if (!dbFile.exists()) return null
+            val exports = File(context.getExternalFilesDir(null), "exports")
+            if (!exports.exists()) exports.mkdirs()
+            val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(Date())
+            val out = File(exports, "${DATABASE_NAME}_export_$timestamp.db")
+            FileInputStream(dbFile).use { input ->
+                FileOutputStream(out).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            val wal = File(dbFile.path + "-wal")
+            val shm = File(dbFile.path + "-shm")
+            if (wal.exists()) {
+                FileInputStream(wal).use { input ->
+                    FileOutputStream(File(exports, out.name + "-wal")).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+            if (shm.exists()) {
+                FileInputStream(shm).use { input ->
+                    FileOutputStream(File(exports, out.name + "-shm")).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+            Log.i(TAG, "Exported DB to ${out.absolutePath}")
+            out
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to export database", e)
+            null
+        }
+    }
 }

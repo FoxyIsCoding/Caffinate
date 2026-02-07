@@ -222,7 +222,7 @@ fun SettingsScreen(
                         title = "Max History Entries",
                         subtitle = "$maxHistoryEntries rows",
                         onClick = {
-                            // open a simple dialog to set number of entries
+
                             scope.launch { openMaxHistoryDialog(settingsViewModel) }
                         },
                         showDivider = true
@@ -582,6 +582,7 @@ fun NumericSettingRow(
 @Composable
 fun DailyGoalCard(currentGoal: Int, onGoalChange: (Int) -> Unit) {
     var sliderValue by remember { mutableStateOf(currentGoal.toFloat()) }
+    LaunchedEffect(currentGoal) { sliderValue = currentGoal.toFloat() }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -758,7 +759,6 @@ fun AboutDialog(onDismiss: () -> Unit) {
 }
 
 private suspend fun openMaxHistoryDialog(settingsViewModel: SettingsViewModel) {
-    // Placeholder for flows that need coroutine scope when opening complex dialogs.
-    // The actual UI for this is opened from SettingsScreen; to keep this top-level file self-contained
-    // we leave the value-change functionality inline in the screen.
+
+
 }
